@@ -15,6 +15,12 @@
                     root.nav_drawer.set_state("close")
                     root.screen_manager.current = "tela_prest"
 
+            OneLineListItem:
+                text: "Consulta Banco"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "banco_dados"
+
 
 
 <MDTextField>
@@ -51,137 +57,11 @@ Screen:
             Principal:
                 name: "principal"
 
-                FloatLayout:
-                    size_hint: (1, .915)
-
-                    MDRectangleFlatButton:
-                        size_hint: 1,1
-                        #text: 'Verificar'
-                        #font_size: 20
-                        #pos_hint: {'x':0.325, 'y':0.5}
-                        text_color: (36/255,100/255,203/255,1)
-                        #line_color: 0, 0, 1, 1
-                        md_bg_color: 1, 1, 1, 1
-                        ripple_scale: 0
-
-
-                    MDTextField:
-                        pos_hint: {'x': .1, 'y': .85}
-                        hint_text: "Data Análise"
-
-                    MDTextField:
-                        pos_hint: {'x': .25, 'y': .85}
-                        hint_text: "Data Nota"
-
-                    MDTextField:
-                        pos_hint: {'x': .40, 'y': .85}
-                        hint_text: "Data Vencimento"
-
-                    MDTextField:
-                        pos_hint: {'x': .55, 'y': .85}
-                        hint_text: "Número da Nota"
-
-                    MDTextField:
-                        id: num_cnpj
-                        size_hint: (0.25, 0.09)
-                        pos_hint: {'x': .1, 'y': .725}
-                        hint_text: "CNPJ"
-                        on_text_validate:
-                            screen_manager.current = "principal"
-                            root.mascara()
-
-
-                    MDTextField:
-                        size_hint: (0.25, 0.09)
-                        pos_hint: {'x': .40, 'y': .725}
-                        hint_text: "Fornecedor"
-
-                    MDTextField:
-                        size_hint: (0.15, 0.09)
-                        pos_hint: {'x': .1, 'y': .60}
-                        hint_text: "Município ISS"
-
-                    MDTextField:
-                        size_hint: (0.15, 0.09)
-                        pos_hint: {'x': .30, 'y': .60}
-                        hint_text: "Regime Tributário"
-                        helper_text: 'Opções: Normal, Simples, Imune.'
-
-                    MDTextField:
-                        size_hint: (0.15, 0.09)
-                        pos_hint: {'x': .50, 'y': .60}
-                        hint_text: "Código Serviço"
-
-
-                    MDTextField:
-                        size_hint: (.15, .09)
-                        pos_hint: {'x': .1, 'y': .475}
-                        hint_text: "Valor Bruto"
-
-                    MDTextField:
-                        pos_hint: {'x': .725, 'y': .85}
-                        hint_text: "Alíq. IRRF"
-
-                    MDTextField:
-                        pos_hint: {'x': .85, 'y': .85}
-                        hint_text: "IRRF"
-
-                    MDTextField:
-                        pos_hint: {'x': .725, 'y': .725}
-                        hint_text: "Alíq. CRF"
-
-                    MDTextField:
-                        pos_hint: {'x': .85, 'y': .725}
-                        hint_text: "CRF"
-
-                    MDTextField:
-                        pos_hint: {'x': .725, 'y': .60}
-                        hint_text: "Alíq. INSS"
-
-                    MDTextField:
-                        pos_hint: {'x': .85, 'y': .60}
-                        hint_text: "INSS"
-
-                    MDTextField:
-                        pos_hint: {'x': .725, 'y': .475}
-                        hint_text: "Alíq. INSS"
-
-                    MDTextField:
-                        pos_hint: {'x': .85, 'y': .475}
-                        hint_text: "INSS"
-
-                    MDTextField:
-                        size_hint: (.15, .09)
-                        pos_hint: {'x': .5, 'y': .475}
-                        hint_text: "Valor Líquido"
-
-
-                    MDRectangleFlatButton:
-                        text: 'Adicionar'
-                        pos_hint: {'x':0.10, 'y':0.2}
-                        on_release:
-
-                    MDRectangleFlatButton:
-                        text: 'Limpar Campos'
-                        pos_hint: {'x':0.30, 'y':0.2}
-                        on_release:
-
-                    MDRectangleFlatButton:
-                        text: 'Atualizar'
-                        pos_hint: {'x':0.5, 'y':0.2}
-                        on_release:
-
-                    MDRectangleFlatButton:
-                        text: 'Buscar'
-                        pos_hint: {'x':0.7, 'y':0.2}
-                        on_release:
-
             Principal2:
                 name: "tela_prest"
 
-                MDLabel:
-                    text: "Cadastro Prestadores"
-                    halign: "center"
+            BancoDados:
+                name: "banco_dados"
 
         MDNavigationDrawer:
             id: nav_drawer
@@ -189,3 +69,233 @@ Screen:
             ContentNavigationDrawer:
                 screen_manager: screen_manager
                 nav_drawer: nav_drawer
+
+
+
+<Principal>:
+
+    FloatLayout:
+        size_hint: (1, .915)
+
+        MDRectangleFlatButton:
+            size_hint: 1,1
+            #text: 'Verificar'
+            #font_size: 20
+            #pos_hint: {'x':0.325, 'y':0.5}
+            text_color: (36/255,100/255,203/255,1)
+            #line_color: 0, 0, 1, 1
+            md_bg_color: 1, 1, 1, 1
+            ripple_scale: 0
+
+
+        MDTextField:
+            id: dt_analise
+            pos_hint: {'x': .1, 'y': .85}
+            hint_text: "Data Análise"
+            on_focus:
+                root.data_dia()
+
+        MDTextField:
+            id: dt_nota
+            pos_hint: {'x': .25, 'y': .85}
+            hint_text: "Data Nota"
+
+        MDTextField:
+            pos_hint: {'x': .40, 'y': .85}
+            hint_text: "Data Vencimento"
+
+        MDTextField:
+            pos_hint: {'x': .55, 'y': .85}
+            hint_text: "Número da Nota"
+
+        MDTextField:
+            id: num_cnpj
+            size_hint: (0.25, 0.09)
+            pos_hint: {'x': .1, 'y': .725}
+            hint_text: "CNPJ"
+
+
+
+        MDTextField:
+            id: cod_fornec
+            size_hint: (0.25, 0.09)
+            pos_hint: {'x': .40, 'y': .725}
+            hint_text: "Fornecedor"
+            on_focus:
+                root.mascara()
+                root.busca_cadastro()
+
+        MDTextField:
+            id: regime_trib
+            size_hint: (0.15, 0.09)
+            pos_hint: {'x': .1, 'y': .60}
+            hint_text: "Regime Tributário"
+            helper_text: 'Opções: Normal, Simples, Imune.'
+
+        MDTextField:
+            size_hint: (0.15, 0.09)
+            pos_hint: {'x': .30, 'y': .60}
+            hint_text: "Município ISS"
+
+
+        MDTextField:
+            id: cod_serv
+            size_hint: (0.15, 0.09)
+            pos_hint: {'x': .10, 'y': .475}
+            hint_text: "Código Serviço"
+
+        MDLabel:
+            size_hint: (0.3, 0.09)
+            pos_hint: {'x': .30, 'y': .475}
+            text: root.descr_serv
+
+
+        MDTextField:
+            id: v_bruto
+            #size_hint: (.15, .09)
+            pos_hint: {'x': .725, 'y': .35}
+            hint_text: "Valor Bruto"
+            on_focus:
+                root.busca_servico()
+
+        MDTextField:
+            id: aliq_ir
+            pos_hint: {'x': .725, 'y': .85}
+            hint_text: "Alíq. IRRF"
+
+        MDTextField:
+            id: irrf
+            pos_hint: {'x': .85, 'y': .85}
+            hint_text: "IRRF"
+            on_focus:
+                root.calcula_imposto(self, aliq_ir)
+
+        MDTextField:
+            id: aliq_crf
+            pos_hint: {'x': .725, 'y': .725}
+            hint_text: "Alíq. CRF"
+
+        MDTextField:
+            id: crf
+            pos_hint: {'x': .85, 'y': .725}
+            hint_text: "CRF"
+            on_focus:
+                root.calcula_imposto(self, aliq_crf)
+
+        MDTextField:
+            id: aliq_inss
+            pos_hint: {'x': .725, 'y': .60}
+            hint_text: "Alíq. INSS"
+
+        MDTextField:
+            id: inss
+            pos_hint: {'x': .85, 'y': .60}
+            hint_text: "INSS"
+            on_focus:
+                root.calcula_imposto(self, aliq_inss)
+
+        MDTextField:
+            id: aliq_iss
+            pos_hint: {'x': .725, 'y': .475}
+            hint_text: "Alíq. ISS"
+
+        MDTextField:
+            id: iss
+            pos_hint: {'x': .85, 'y': .475}
+            hint_text: "ISS"
+            on_focus:
+                root.calcula_imposto(self, aliq_iss)
+
+        MDTextField:
+            id: v_liq
+            #size_hint: (.15, .09)
+            pos_hint: {'x': .85, 'y': .35}
+            hint_text: "Valor Líquido"
+            on_focus:
+                root.valor_liq()
+
+
+        MDRectangleFlatButton:
+            text: 'Adicionar'
+            pos_hint: {'x':0.10, 'y':0.2}
+            on_release:
+
+        MDRectangleFlatButton:
+            text: 'Limpar Campos'
+            pos_hint: {'x':0.30, 'y':0.2}
+            on_release:
+
+        MDRectangleFlatButton:
+            text: 'Atualizar'
+            pos_hint: {'x':0.5, 'y':0.2}
+            on_release:
+
+        MDRectangleFlatButton:
+            text: 'Buscar'
+            pos_hint: {'x':0.7, 'y':0.2}
+            on_release:
+
+<Principal2>
+
+
+    MDLabel:
+        text: "Cadastro Prestadores"
+        pos_hint: {'x': .4, 'y': .725}
+        size_hint: .3, .2
+        font_size: 30
+        theme_text_color: "Custom"
+        text_color: (33/255,150/255,243/255,1)
+
+
+    MDTextField:
+        size_hint: (.2, .1)
+        pos_hint: {'x': .4, 'y': .65}
+        hint_text: "CNPJ"
+
+
+
+    MDTextField:
+        id: cad_nome
+        size_hint: (.2, .1)
+        pos_hint: {'x': .4, 'y': .525}
+        hint_text: "FORNECEDOR"
+
+    MDTextField:
+        id: cad_municip
+        size_hint: (.2, .1)
+        pos_hint: {'x': .4, 'y': .40}
+        hint_text: "MUNICÍPIO"
+
+    MDTextField:
+        id: cad_regime
+        size_hint: (.2, .1)
+        pos_hint: {'x': .4, 'y': .275}
+        hint_text: "REGIME TRIBUTÁRIO"
+
+
+    MDRectangleFlatButton:
+        text: 'Cadastrar'
+        pos_hint: {'x':0.25, 'y':0.15}
+        on_release:
+
+    MDRectangleFlatButton:
+        text: 'Atualizar'
+        pos_hint: {'x':0.425, 'y':0.15}
+        on_release:
+
+    MDRectangleFlatButton:
+        text: 'Pesquisar'
+        pos_hint: {'x':0.6, 'y':0.15}
+        on_release:
+
+
+<BancoDados>:
+
+    on_enter:
+
+        root.gerar_banco()
+
+    MDLabel:
+        text: "Carregando Banco de Dados..."
+        halign: "center"
+        font_size: 20
