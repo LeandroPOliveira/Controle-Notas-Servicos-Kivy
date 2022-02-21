@@ -1,5 +1,5 @@
 from kivy import Config
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, NumericProperty
 from kivymd.app import MDApp
 from kivymd.uix.datatables import MDDataTable
 from kivy.lang.builder import Builder
@@ -10,13 +10,15 @@ import os
 from datetime import date
 import pyodbc
 from kivy.utils import get_color_from_hex
+from kivymd.uix.dialog import MDDialog
+
 
 class ContentNavigationDrawer(Screen):
     pass
 
 class Principal(Screen):
     descr_serv = StringProperty('')
-
+    # cod_id = StringProperty(0)
 
     def mascara(self):
         mask = self.ids.num_cnpj.text
@@ -82,8 +84,222 @@ class Principal(Screen):
             pass
 
 
-class Principal2(Screen):
-    pass
+    def adicionar(self):
+        if self.cnpj.get() == '':
+            self.dialog = MDDialog(
+                text="Insira todas as informações!",
+                radius=[20, 7, 20, 7], )
+
+            self.dialog.open()
+        else:
+            lmdb = os.getcwd() + '\Base_notas.accdb;'
+            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cursor = cnx.cursor()
+            cursor.execute(
+                'INSERT INTO notas_fiscais (data_analise, data, data_vencimento, NF,	CNPJ, Fornecedor, cidade,'
+                'simples_nacional, codigo_servico, valor_bruto, aliq_irrf, irrf,	aliq_crf, crf, aliq_inss, '
+                'inss,	aliq_iss, iss, valor_liquido) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
+                ' ?, ?, ?, ?)', (self.ids.dt_analise.text,
+                                 self.ids.dt_nota.text,
+                                 self.ids.dt_venc.text,
+                                 self.ids.num_nota.text,
+                                 self.ids.num_cnpj.text,
+                                 self.ids.cod_fornec.text,
+                                 self.ids.mun_iss.text,
+                                 self.ids.regime_trib.text,
+                                 self.ids.cod_serv.text,
+                                 self.ids.v_bruto.text,
+                                 self.ids.aliq_ir.text,
+                                 self.ids.irrf.text,
+                                 self.ids.aliq_crf.text,
+                                 self.ids.crf.text,
+                                 self.ids.aliq_inss.text,
+                                 self.ids.inss.text,
+                                 self.ids.aliq_iss.text,
+                                 self.ids.iss.text,
+                                 self.ids.v_liq.text))
+            # self.lembrar.set(0)
+            self.limpar()
+            cnx.commit()
+            cnx.close()
+
+            self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
+            self.dialog.open()
+
+    def limpar(self):
+        self.ids.dt_analise.text = '',
+        self.ids.dt_nota.text = '',
+        self.ids.dt_venc.text = '',
+        self.ids.num_nota.text = '',
+        self.ids.num_cnpj.text = '',
+        self.ids.cod_fornec.text = '',
+        self.ids.mun_iss.text = '',
+        self.ids.regime_trib.text = '',
+        self.ids.cod_serv.text = '',
+        self.ids.v_bruto.text = '',
+        self.ids.aliq_ir.text = '',
+        self.ids.irrf.text = '',
+        self.ids.aliq_crf.text = '',
+        self.ids.crf.text = '',
+        self.ids.aliq_inss.text = '',
+        self.ids.inss.text = '',
+        self.ids.aliq_iss.text = '',
+        self.ids.iss.text = '',
+        self.ids.v_liq.text = '',
+        self.descr_serv = ''
+
+    def apagar(self):
+        lmdb = os.getcwd() + '\Base_notas.accdb;'
+        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+        cursor = cnx.cursor()
+        cursor.execute('DELETE FROM notas_fiscais WHERE ID=?', (self.ids.cod_id.text,))
+        cnx.commit()
+        cnx.close()
+        self.dialog = MDDialog(text="Registro apagado com sucesso!", radius=[20, 7, 20, 7], )
+        self.dialog.open()
+        self.limpar()
+
+    def buscar(self):
+        try:
+            lmdb = os.getcwd() + '\Base_notas.accdb;'
+            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cursor = cnx.cursor()
+            cursor.execute('select * FROM notas_fiscais WHERE NF=?', (self.ids.num_nota.text,))
+            row = cursor.fetchone()
+            print(row[0])
+            self.ids.cod_id.text = str(row[0])
+            self.ids.dt_analise.text = row[1]
+            self.ids.dt_nota.text = row[2]
+            self.ids.dt_venc.text = row[3]
+            self.ids.num_nota.text = str(row[4])
+            self.ids.num_cnpj.text = row[5]
+            self.ids.cod_fornec.text = row[6]
+            self.ids.mun_iss.text = row[7]
+            self.ids.regime_trib.text = row[8]
+            self.ids.cod_serv.text = row[9]
+            self.ids.v_bruto.text = str(round(row[10],2)).replace('.',',')
+            self.ids.aliq_ir.text = str(round(row[11],2)).replace('.',',')
+            self.ids.irrf.text = str(round(row[12],2)).replace('.',',')
+            self.ids.aliq_crf.text = str(round(row[13],2)).replace('.',',')
+            self.ids.crf.text = str(round(row[14],2)).replace('.',',')
+            self.ids.aliq_inss.text = str(round(row[15],2)).replace('.',',')
+            self.ids.inss.text = str(round(row[16],2)).replace('.',',')
+            self.ids.aliq_iss.text = str(round(row[17],2)).replace('.',',')
+            self.ids.iss.text = str(round(row[18],2)).replace('.',',')
+            self.ids.v_liq.text = str(round(row[19],2)).replace('.',',')
+            cnx.commit()
+            cnx.close()
+        except:
+            self.dialog = MDDialog(text="Registro não encontrado!", radius=[20, 7, 20, 7], )
+            self.dialog.open()
+            self.limpar()
+
+
+    def atualizar(self):
+        try:
+            lmdb = os.getcwd() + '\Base_notas.accdb;'
+            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cursor = cnx.cursor()
+            cursor.execute('update notas_fiscais set DATA_ANALISE=?, DATA=?, DATA_VENCIMENTO=?, NF=?, CNPJ=?, FORNECEDOR=?, '
+                           'CIDADE=?, SIMPLES_NACIONAL=?, CODIGO_SERVICO=?, VALOR_BRUTO=?, ALIQ_IRRF=?, IRRF=?, ALIQ_CRF=?, '
+                           'crf=?, ALIQ_INSS=?, INSS=?, ALIQ_ISS=?, ISS=?, VALOR_LIQUIDO=? where ID=?',(self.ids.dt_analise.text,
+             self.ids.dt_nota.text,
+             self.ids.dt_venc.text,
+             self.ids.num_nota.text,
+             self.ids.num_cnpj.text,
+             self.ids.cod_fornec.text,
+             self.ids.mun_iss.text,
+             self.ids.regime_trib.text,
+             self.ids.cod_serv.text,
+             self.ids.v_bruto.text,
+             self.ids.aliq_ir.text,
+             self.ids.irrf.text,
+             self.ids.aliq_crf.text,
+             self.ids.crf.text,
+             self.ids.aliq_inss.text,
+             self.ids.inss.text,
+             self.ids.aliq_iss.text,
+             self.ids.iss.text,
+             self.ids.v_liq.text,
+            self.ids.cod_id.text))
+            cnx.commit()
+            cnx.close()
+            self.dialog = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
+            self.dialog.open()
+
+        except:
+            self.dialog = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
+            self.dialog.open()
+
+
+
+class CadastroPrestador(Screen):
+    teste = StringProperty(None)
+
+    def mascara_cad(self):  # função para formatar CNPJ
+        mask = self.ids.cad_cnpj.text
+        if mask != '' and '/' not in mask and len(mask) >= 14:
+            mask_cnpj = f'{mask[:2]}.{mask[2:5]}.{mask[5:8]}/{mask[8:12]}-{mask[12:14]}'
+            self.ids.cad_cnpj.text = mask_cnpj
+        else:
+            pass
+
+    def pesquisar_fornecedor(self):
+        try:
+            lmdb = os.getcwd() + '\Base_notas.accdb;'
+            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cursor = cnx.cursor()
+            cursor.execute('SELECT * FROM cadastro WHERE CNPJ=?', (self.ids.cad_cnpj.text,))
+            row = cursor.fetchone()
+            self.ids.cad_cnpj.text = row[0]
+            self.ids.cad_nome.text = row[1]
+            self.ids.cad_mun.text = row[2]
+            self.ids.cad_regime.text = row[3]
+            cnx.commit()
+            cnx.close()
+        except:
+            self.dialog = MDDialog(
+                text="O CNPJ informado não consta no cadastro!",
+                radius=[20, 7, 20, 7],)
+
+            self.dialog.open()
+
+
+    def cadastrar_prestador(self):
+        if self.ids.cad_cnpj.text == '':
+            pass
+            # tkinter.messagebox.showerror('Notas fiscais de Serviço', 'Coloque todas as informações')
+        else:
+            try:
+                lmdb = os.getcwd() + '\Base_notas.accdb;'
+                cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+                cursor = cnx.cursor()
+                cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?)', (self.ids.cad_cnpj.text, self.ids.cad_nome.text,
+                                                                            self.ids.cad_mun.text, self.ids.cad_regime.text))
+                cnx.commit()
+                # tkinter.messagebox.showinfo('Notas Fiscais de Serviço', 'Registro incluído com sucesso!')
+                cnx.close()
+
+            except:
+                pass
+                # tkinter.messagebox.showerror('Notas Fiscais de Serviço', 'Erro! CNPJ já cadastrado!')
+
+
+    def atualizar_cadastro(self):
+
+        lmdb = os.getcwd() + '\Base_notas.accdb;'
+        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+        cursor = cnx.cursor()
+        cursor.execute('UPDATE cadastro SET NOME=?, MUNICÍPIO=?, OPTANTE_SIMPLES=? WHERE CNPJ=?',
+                       (self.ids.cad_nome.text,
+                        self.ids.cad_mun.text,
+                        self.ids.cad_regime.text,
+                        self.ids.cad_cnpj.text))
+        cnx.commit()
+        cnx.close()
+
+
+
 
 class BancoDados(Screen):
 

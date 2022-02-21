@@ -57,7 +57,7 @@ Screen:
             Principal:
                 name: "principal"
 
-            Principal2:
+            CadastroPrestador:
                 name: "tela_prest"
 
             BancoDados:
@@ -88,6 +88,11 @@ Screen:
             ripple_scale: 0
 
 
+        Label:
+            text: ''
+            id: cod_id
+            font_color: (0,0,0,0)
+
         MDTextField:
             id: dt_analise
             pos_hint: {'x': .1, 'y': .85}
@@ -101,10 +106,12 @@ Screen:
             hint_text: "Data Nota"
 
         MDTextField:
+            id: dt_venc
             pos_hint: {'x': .40, 'y': .85}
             hint_text: "Data Vencimento"
 
         MDTextField:
+            id: num_nota
             pos_hint: {'x': .55, 'y': .85}
             hint_text: "Número da Nota"
 
@@ -133,6 +140,7 @@ Screen:
             helper_text: 'Opções: Normal, Simples, Imune.'
 
         MDTextField:
+            id: mun_iss
             size_hint: (0.15, 0.09)
             pos_hint: {'x': .30, 'y': .60}
             hint_text: "Município ISS"
@@ -219,23 +227,33 @@ Screen:
             text: 'Adicionar'
             pos_hint: {'x':0.10, 'y':0.2}
             on_release:
+                root.adicionar()
 
         MDRectangleFlatButton:
             text: 'Limpar Campos'
-            pos_hint: {'x':0.30, 'y':0.2}
+            pos_hint: {'x':0.275, 'y':0.2}
             on_release:
+                root.limpar()
 
         MDRectangleFlatButton:
             text: 'Atualizar'
-            pos_hint: {'x':0.5, 'y':0.2}
+            pos_hint: {'x':0.45, 'y':0.2}
             on_release:
+                root.atualizar()
 
         MDRectangleFlatButton:
             text: 'Buscar'
-            pos_hint: {'x':0.7, 'y':0.2}
+            pos_hint: {'x':0.625, 'y':0.2}
             on_release:
+                root.buscar()
 
-<Principal2>
+        MDRectangleFlatButton:
+            text: 'Apagar'
+            pos_hint: {'x':0.8, 'y':0.2}
+            on_release:
+                root.apagar()
+
+<CadastroPrestador>
 
 
     MDLabel:
@@ -248,20 +266,21 @@ Screen:
 
 
     MDTextField:
+        id: cad_cnpj
         size_hint: (.2, .1)
         pos_hint: {'x': .4, 'y': .65}
         hint_text: "CNPJ"
-
-
 
     MDTextField:
         id: cad_nome
         size_hint: (.2, .1)
         pos_hint: {'x': .4, 'y': .525}
         hint_text: "FORNECEDOR"
+        on_focus:
+            root.mascara_cad()
 
     MDTextField:
-        id: cad_municip
+        id: cad_mun
         size_hint: (.2, .1)
         pos_hint: {'x': .4, 'y': .40}
         hint_text: "MUNICÍPIO"
@@ -271,22 +290,26 @@ Screen:
         size_hint: (.2, .1)
         pos_hint: {'x': .4, 'y': .275}
         hint_text: "REGIME TRIBUTÁRIO"
+        helper_text: 'Opções: Normal, Simples, Imune.'
 
 
     MDRectangleFlatButton:
         text: 'Cadastrar'
         pos_hint: {'x':0.25, 'y':0.15}
         on_release:
+            root.cadastrar_prestador()
 
     MDRectangleFlatButton:
         text: 'Atualizar'
         pos_hint: {'x':0.425, 'y':0.15}
         on_release:
+            root.atualizar_cadastro()
 
     MDRectangleFlatButton:
         text: 'Pesquisar'
         pos_hint: {'x':0.6, 'y':0.15}
         on_release:
+            root.pesquisar_fornecedor()
 
 
 <BancoDados>:
