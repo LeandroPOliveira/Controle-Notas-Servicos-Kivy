@@ -11,7 +11,8 @@ from datetime import date
 import pyodbc
 from kivy.utils import get_color_from_hex
 from kivymd.uix.dialog import MDDialog
-
+import pandas as pd
+from openpyxl.reader.excel import load_workbook
 
 class ContentNavigationDrawer(Screen):
     pass
@@ -46,20 +47,29 @@ class Principal(Screen):
         lmdb = os.getcwd() + '\Base_notas.accdb;'
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = self.cnx.cursor()
-        if self.ids.regime_trib.text in 'nãoNÃOnaoNAONãoNormalnormal':
-            if self.ids.cod_serv.text != '':
-                lista = {'irrf': self.ids.aliq_ir, 'crf': self.ids.aliq_crf, 'inss': self.ids.aliq_inss,
-                         'iss': self.ids.aliq_iss}
-                for imp, aliq in lista.items():
+        if self.ids.cod_serv.text != '':
+            lista = {'irrf': self.ids.aliq_ir, 'crf': self.ids.aliq_crf, 'inss': self.ids.aliq_inss,
+                     'iss': self.ids.aliq_iss}
+            for imp, aliq in lista.items():
+                if self.ids.regime_trib.text in 'nãoNÃOnaoNAONãoNormalnormal':
                     cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
                     busca = cursor.fetchone()
-
                     aliq.text = str(round(busca[0], 2)).replace('.', ',')
+                else:
+                    aliq.text = '0,00'
 
-        cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
-        busca2 = cursor.fetchone()
+        if self.ids.regime_trib.text not in 'Simplessimples':
+            cursor.execute('select aliq_iss from municipios where municipio = ? and cod_iss = ?',
+                           (self.ids.mun_iss.text, self.ids.cod_serv.text, ))
+            busca_aliq = cursor.fetchone()
+            self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
 
-        self.descr_serv = busca2[0][0:190]
+        try:
+            cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
+            busca2 = cursor.fetchone()
+            self.descr_serv = busca2[0][0:190]
+        except:
+            pass
 
     def calcula_imposto(self, instance, aliquota):
         if aliquota.text != '':
@@ -84,8 +94,10 @@ class Principal(Screen):
             pass
 
 
+
+
     def adicionar(self):
-        if self.cnpj.get() == '':
+        if self.ids.num_cnpj.text == '':
             self.dialog = MDDialog(
                 text="Insira todas as informações!",
                 radius=[20, 7, 20, 7], )
@@ -118,7 +130,7 @@ class Principal(Screen):
                                  self.ids.aliq_iss.text,
                                  self.ids.iss.text,
                                  self.ids.v_liq.text))
-            # self.lembrar.set(0)
+            self.ids.lembrar.active = False
             self.limpar()
             cnx.commit()
             cnx.close()
@@ -149,7 +161,6 @@ class Principal(Screen):
                     self.ids.v_liq]
 
         for i in entradas:
-            print(i.text)
             i.text = ''
         self.descr_serv = ''
 
@@ -231,10 +242,82 @@ class Principal(Screen):
             self.dialog = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog.open()
             self.limpar()
+            self.inserir_notas()
 
         except:
             self.dialog = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
             self.dialog.open()
+
+
+
+    def inserir_notas(self):
+
+        entradas = [self.ids.cod_id, self.ids.dt_analise, self.ids.dt_nota,
+                    self.ids.dt_venc,
+                    self.ids.num_nota,
+                    self.ids.num_cnpj,
+                    self.ids.cod_fornec,
+                    self.ids.mun_iss,
+                    self.ids.regime_trib,
+                    self.ids.cod_serv,
+                    self.ids.v_bruto,
+                    self.ids.aliq_ir,
+                    self.ids.irrf,
+                    self.ids.aliq_crf,
+                    self.ids.crf,
+                    self.ids.aliq_inss,
+                    self.ids.inss,
+                    self.ids.aliq_iss,
+                    self.ids.iss,
+                    self.ids.v_liq]
+        #
+        # print(BancoDados.lista)
+        # print(len(BancoDados.lista))
+
+        if len(BancoDados.lista) == 0:
+            pass
+        elif len(BancoDados.lista) == 1:
+            BancoDados.lista = BancoDados.lista[0]
+
+            for index, entrada in enumerate(entradas):
+                for lista in BancoDados.lista:
+                    if index < 10:
+                        entrada.text = str(BancoDados.lista[index])
+                    else:
+                        entrada.text = str(round(float(BancoDados.lista[index]),2)).replace('.', ',')
+            BancoDados.lista.clear()
+        else:
+            for index, entrada in enumerate(entradas):
+                for lista in BancoDados.lista[0]:
+                    if index < 10:
+                        entrada.text = str(BancoDados.lista[0][index])
+                    else:
+                        entrada.text = str(round(float(BancoDados.lista[0][index]), 2)).replace('.', ',')
+            BancoDados.lista.pop(0)
+
+        print(BancoDados.lista)
+
+    def lembrar_lancamento(self):
+        if self.ids.lembrar.active == True:
+            lmdb = os.getcwd() + '\Base_notas.accdb;'
+            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cursor = cnx.cursor()
+            cursor.execute('SELECT TOP 1 data_analise, data, data_vencimento, nf, cnpj, fornecedor, simples_nacional,'
+                           'codigo_servico from notas_fiscais order by id desc')
+            row = cursor.fetchone()
+            self.ids.dt_analise.text = row[0]
+            self.ids.dt_nota.text = row[1]
+            self.ids.dt_venc.text = row[2]
+            self.ids.num_nota.text = str((row[3]) + 1)
+            self.ids.num_cnpj.text = row[4]
+            self.ids.cod_fornec.text = row[5]
+            self.ids.regime_trib.text = row[6]
+            self.ids.cod_serv.text = row[7]
+            cnx.commit()
+
+        else:
+            self.limpar()
+
 
 
 
@@ -307,6 +390,7 @@ class CadastroPrestador(Screen):
 
 
 class BancoDados(Screen):
+    lista = []
 
     def gerar_banco(self):
         # conectar banco de dados
@@ -322,7 +406,7 @@ class BancoDados(Screen):
 
 
     def add_datatable(self):
-        self.lista = []
+
         self.data_tables = MDDataTable(pos_hint={'center_x': 0.5, 'center_y': 0.5},
                                        size_hint=(1, 0.8),
                                        use_pagination=True, rows_num=10,
@@ -355,8 +439,49 @@ class BancoDados(Screen):
 
 
     def pegar_check(self):
-        self.lista.append(self.data_tables.get_row_checks())
-        print(self.lista)
+        self.lista.clear()
+        for item in self.data_tables.get_row_checks():
+            self.lista.append(item)
+
+class ExportarDados(Screen):
+
+
+    def exp_banco(self):
+        # exportar banco completo para consultas e geração de guias de recolhimento
+        book = load_workbook('Programa Planilha de retenção.xlsx')
+        writer = pd.ExcelWriter('Programa Planilha de retenção.xlsx', engine='openpyxl')
+        writer.book = book
+
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+
+        # Conectar ao banco
+        lmdb = os.getcwd() + '\Base_notas.accdb;'
+        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+        cursor = cnx.cursor()
+        cursor.execute('select * from notas_fiscais')
+        resultado = cursor.fetchall()
+        lista = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+        for i in resultado:
+            for l in range(20):
+                lista[l].append(i[l])
+        tabela = pd.DataFrame(lista).transpose()
+        tabela.columns = ['ID', 'data_analise', 'data', 'data_vencimento', 'NF', 'CNPJ', 'Fornecedor', 'cidade',
+                          'simples_nacional', 'codigo_servico', 'valor_bruto', 'aliq_irrf', 'irrf', 'aliq_crf',
+                          'crf',
+                          'aliq_inss', 'inss', 'aliq_iss', 'iss', 'valor_liquido']
+
+        cols = ['valor_bruto', 'aliq_irrf', 'irrf', 'aliq_crf', 'crf',
+                'aliq_inss', 'inss', 'aliq_iss', 'iss', 'valor_liquido']
+
+        tabela[cols] = tabela[cols].apply(pd.to_numeric, errors='coerce')
+
+        frame = pd.DataFrame(tabela)
+        frame.to_excel(writer, sheet_name='Geral', index=False)
+
+        writer.save()
+        self.dialog = MDDialog(text="Banco exportado com sucesso!", radius=[20, 7, 20, 7], )
+        self.dialog.open()
+
 
 
 class WindowManager(ScreenManager):
@@ -364,7 +489,6 @@ class WindowManager(ScreenManager):
 
 
 class NotasFiscais(MDApp):
-    
 
     def build(self):
         Window.clearcolor = (1, 1, 1, 1)

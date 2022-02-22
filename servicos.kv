@@ -21,6 +21,11 @@
                     root.nav_drawer.set_state("close")
                     root.screen_manager.current = "banco_dados"
 
+            OneLineListItem:
+                text: "Exportar Banco"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "exportar_dados"
 
 
 <MDTextField>
@@ -63,6 +68,9 @@ Screen:
             BancoDados:
                 name: "banco_dados"
 
+            ExportarDados:
+                name: 'exportar_dados'
+
         MDNavigationDrawer:
             id: nav_drawer
 
@@ -73,6 +81,9 @@ Screen:
 
 
 <Principal>:
+
+    on_enter:
+        root.inserir_notas()
 
     FloatLayout:
         size_hint: (1, .915)
@@ -86,6 +97,11 @@ Screen:
             #line_color: 0, 0, 1, 1
             md_bg_color: 1, 1, 1, 1
             ripple_scale: 0
+
+        Image:
+            source: 'drew.jpg'
+            allow_stretch: True
+            keep_ratio: False
 
 
         Label:
@@ -166,6 +182,7 @@ Screen:
             on_focus:
                 root.busca_servico()
 
+
         MDTextField:
             id: aliq_ir
             pos_hint: {'x': .725, 'y': .85}
@@ -222,34 +239,47 @@ Screen:
             on_focus:
                 root.valor_liq()
 
+        MDSwitch:
+            id: lembrar
+            size_hint: None, None
+            #size: "48dp", "48dp"
+            pos_hint: {'x': .1, 'y': .365}
+            on_active:
+                root.lembrar_lancamento()
+
+        MDLabel:
+            text: 'Repetir Lançamento'
+            size_hint: (.2, .1)
+            pos_hint: {'x': .14, 'y': .35}
+
 
         MDRectangleFlatButton:
             text: 'Adicionar'
-            pos_hint: {'x':0.10, 'y':0.2}
+            pos_hint: {'x':0.10, 'y':0.15}
             on_release:
                 root.adicionar()
 
         MDRectangleFlatButton:
             text: 'Limpar Campos'
-            pos_hint: {'x':0.275, 'y':0.2}
+            pos_hint: {'x':0.275, 'y':0.15}
             on_release:
                 root.limpar()
 
         MDRectangleFlatButton:
             text: 'Atualizar'
-            pos_hint: {'x':0.45, 'y':0.2}
+            pos_hint: {'x':0.45, 'y':0.15}
             on_release:
                 root.atualizar()
 
         MDRectangleFlatButton:
             text: 'Buscar'
-            pos_hint: {'x':0.625, 'y':0.2}
+            pos_hint: {'x':0.625, 'y':0.15}
             on_release:
                 root.buscar()
 
         MDRectangleFlatButton:
             text: 'Apagar'
-            pos_hint: {'x':0.8, 'y':0.2}
+            pos_hint: {'x':0.8, 'y':0.15}
             on_release:
                 root.apagar()
 
@@ -325,6 +355,14 @@ Screen:
 
     MDRectangleFlatButton:
         text: 'Editar'
-        pos_hint: {'x':0.1, 'y':0}
+        pos_hint: {'x':0.1, 'y':0.02}
+        size_hint: .1,.05
         on_release:
             root.pegar_check()
+            root.manager.current = "principal"
+
+
+<ExportarDados>:
+
+    on_enter:
+        root.exp_banco()
