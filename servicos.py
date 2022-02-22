@@ -126,26 +126,31 @@ class Principal(Screen):
             self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog.open()
 
+
+
     def limpar(self):
-        self.ids.dt_analise.text = '',
-        self.ids.dt_nota.text = '',
-        self.ids.dt_venc.text = '',
-        self.ids.num_nota.text = '',
-        self.ids.num_cnpj.text = '',
-        self.ids.cod_fornec.text = '',
-        self.ids.mun_iss.text = '',
-        self.ids.regime_trib.text = '',
-        self.ids.cod_serv.text = '',
-        self.ids.v_bruto.text = '',
-        self.ids.aliq_ir.text = '',
-        self.ids.irrf.text = '',
-        self.ids.aliq_crf.text = '',
-        self.ids.crf.text = '',
-        self.ids.aliq_inss.text = '',
-        self.ids.inss.text = '',
-        self.ids.aliq_iss.text = '',
-        self.ids.iss.text = '',
-        self.ids.v_liq.text = '',
+        entradas = [self.ids.dt_analise, self.ids.dt_nota,
+                    self.ids.dt_venc,
+                    self.ids.num_nota,
+                    self.ids.num_cnpj,
+                    self.ids.cod_fornec,
+                    self.ids.mun_iss,
+                    self.ids.regime_trib,
+                    self.ids.cod_serv,
+                    self.ids.v_bruto,
+                    self.ids.aliq_ir,
+                    self.ids.irrf,
+                    self.ids.aliq_crf,
+                    self.ids.crf,
+                    self.ids.aliq_inss,
+                    self.ids.inss,
+                    self.ids.aliq_iss,
+                    self.ids.iss,
+                    self.ids.v_liq]
+
+        for i in entradas:
+            print(i.text)
+            i.text = ''
         self.descr_serv = ''
 
     def apagar(self):
@@ -166,7 +171,6 @@ class Principal(Screen):
             cursor = cnx.cursor()
             cursor.execute('select * FROM notas_fiscais WHERE NF=?', (self.ids.num_nota.text,))
             row = cursor.fetchone()
-            print(row[0])
             self.ids.cod_id.text = str(row[0])
             self.ids.dt_analise.text = row[1]
             self.ids.dt_nota.text = row[2]
@@ -226,6 +230,7 @@ class Principal(Screen):
             cnx.close()
             self.dialog = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog.open()
+            self.limpar()
 
         except:
             self.dialog = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
@@ -317,6 +322,7 @@ class BancoDados(Screen):
 
 
     def add_datatable(self):
+        self.lista = []
         self.data_tables = MDDataTable(pos_hint={'center_x': 0.5, 'center_y': 0.5},
                                        size_hint=(1, 0.8),
                                        use_pagination=True, rows_num=10,
@@ -348,12 +354,17 @@ class BancoDados(Screen):
         self.add_widget(self.data_tables)
 
 
+    def pegar_check(self):
+        self.lista.append(self.data_tables.get_row_checks())
+        print(self.lista)
+
+
 class WindowManager(ScreenManager):
     pass
 
 
 class NotasFiscais(MDApp):
-
+    
 
     def build(self):
         Window.clearcolor = (1, 1, 1, 1)
