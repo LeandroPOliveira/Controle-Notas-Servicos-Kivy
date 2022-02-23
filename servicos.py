@@ -1,5 +1,4 @@
-from kivy import Config
-from kivy.properties import StringProperty, NumericProperty
+from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.datatables import MDDataTable
 from kivy.lang.builder import Builder
@@ -7,12 +6,14 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.metrics import dp
 from kivy.core.window import Window
 import os
-from datetime import date
+from datetime import datetime, date
 import pyodbc
 from kivy.utils import get_color_from_hex
 from kivymd.uix.dialog import MDDialog
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from openpyxl.reader.excel import load_workbook
+from fpdf import FPDF
 
 class ContentNavigationDrawer(Screen):
     pass
@@ -398,9 +399,25 @@ class BancoDados(Screen):
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
         cursor.execute('select * from notas_fiscais order by ID desc')
-        self.resultado1 = cursor.fetchall()
+        resultado = cursor.fetchall()
         cnx.commit()
         cnx.close()
+        lin_lancamento = []
+        self.total_lancamento = []
+
+        for lin in resultado[:100]:
+            for row in lin:
+                if type(row) != str and type(row) != int:
+                    lin_lancamento.append(float(row))
+                else:
+                    lin_lancamento.append(row)
+            tupla = tuple(lin_lancamento)
+
+            self.total_lancamento.append(tupla)
+            lin_lancamento.clear()
+
+
+
 
         self.add_datatable()
 
@@ -410,7 +427,8 @@ class BancoDados(Screen):
         self.data_tables = MDDataTable(pos_hint={'center_x': 0.5, 'center_y': 0.5},
                                        size_hint=(1, 0.8),
                                        use_pagination=True, rows_num=10,
-                                       background_color_header=get_color_from_hex("#03a9e0"),
+                                       background_color_header=get_color_from_hex("#65275d"),
+                                       background_color_selected_cell=get_color_from_hex("#eddaeb"),
                                        check=True,
                                        column_data=[("[color=#ffffff]ID[/color]", dp(20)),
                                                     ("[color=#ffffff]Dt_Análise[/color]", dp(20)),
@@ -422,7 +440,7 @@ class BancoDados(Screen):
                                                     ("[color=#ffffff]Município[/color]", dp(25)),
                                                     ("[color=#ffffff]Regime Trib.[/color]", dp(25)),
                                                     ("[color=#ffffff]Cod. Serv.[/color]", dp(20)),
-                                                    ("[color=#ffffff]Val.Bruto[/color]", dp(30)),
+                                                    ("[color=#ffffff]Val.Bruto[/color]", dp(20)),
                                                     ("[color=#ffffff]Aliq.IR[/color]", dp(15)),
                                                     ("[color=#ffffff]IRRF[/color]", dp(15)),
                                                     ("[color=#ffffff]Aliq.CRF[/color]", dp(15)),
@@ -433,7 +451,7 @@ class BancoDados(Screen):
                                                     ("[color=#ffffff]ISS[/color]", dp(15)),
                                                     ("[color=#ffffff]Val.Líq.[/color]", dp(30)),
                                                     ],
-                                       row_data=self.resultado1[:100], elevation=1)
+                                       row_data=self.total_lancamento, elevation=1)
 
         self.add_widget(self.data_tables)
 
@@ -482,6 +500,150 @@ class ExportarDados(Screen):
         self.dialog = MDDialog(text="Banco exportado com sucesso!", radius=[20, 7, 20, 7], )
         self.dialog.open()
 
+class Relatorios(Screen):
+
+
+    def relatorios(self):
+
+        # Criar planilha para gerar arquivo
+        writer = pd.ExcelWriter(self.ids.diretorio.text + '\Relatórios.xlsx', engine='xlsxwriter')
+        # Conectar ao banco
+        lmdb = os.getcwd() + '\Base_notas.accdb;'
+        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+        cursor = cnx.cursor()
+
+        # =================== Relatório Imposto de Renda ===============================================#
+        if self.ids.check_ir.active == True:
+            cursor.execute('select cnpj, fornecedor, sum(irrf) from notas_fiscais '
+                           'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) <= '
+                           'DateValue(?) group by cnpj, fornecedor', self.ids.dt_ini.text, self.ids.dt_fim.text)
+            resultado = cursor.fetchall()
+            lista = [[], [], []]
+            for i in resultado:
+                for l in range(3):
+                    lista[l].append(i[l])
+            tabela = pd.DataFrame(lista).transpose()
+            tabela.columns = ['CNPJ', 'Fornecedor', 'IRRF']
+            tabela.to_excel(writer, sheet_name='Irrf', index=False)
+
+        # =========================== Relatório de Contribuições =========================================#
+        if self.ids.check_crf.active == True:
+            cursor.execute('select * from notas_fiscais where data_vencimento <> 0 (select data_vencimento, '
+                           'cnpj, fornecedor, sum(crf) from notas_fiscais '
+                           'where DateValue(data_vencimento) >= DateValue(?) and DateValue(data_vencimento) <= DateValue(?) '
+                           'group by data_vencimento, cnpj, fornecedor order by fornecedor, data_vencimento)',
+                           (self.ids.dt_ini.text, self.ids.dt_fim.text))
+            resultado = cursor.fetchall()
+            lista2 = [[], [], [], []]
+            for i in resultado:
+                for l in range(4):
+                    lista2[l].append(i[l])
+            tabela2 = pd.DataFrame(lista2).transpose()
+            tabela2.columns = ['Data_Vencimento', 'CNPJ', 'Fornecedor', 'CRF']
+            tabela2.to_excel(writer, sheet_name='Crf', index=False)
+
+        # ===========================Relatório ISS ==========================================================#
+        if self.ids.check_iss.active == True:
+            lmdb = os.getcwd() + '\\base_notas.accdb;'
+            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cursor = cnx.cursor()
+
+            cursor.execute('select distinct cidade from notas_fiscais where DateValue(data_analise) >= '
+                           'DateValue(?) and DateValue(data_analise) <= DateValue(?)',
+                           (self.ids.dt_ini.text, self.ids.dt_fim.text))
+            lista = []
+            for row in cursor:
+                if row[0] != '':
+                    lista.append(row[0])
+
+            for i in lista:
+                cursor.execute('select NF, fornecedor, iss from notas_fiscais '
+                               'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) <= DateValue(?)'
+                               'and cidade = ? order by cidade, cnpj', (self.ids.dt_ini.text, self.ids.dt_fim.text, i))
+
+                vencimentos = pd.read_excel('G:\GECOT\FISCAL - Retenções\\Programa Planilha de retenção.xlsx',
+                                            sheet_name='Relatório ISS', usecols=[9, 10], skiprows=10, dtype=str)
+
+                for index, row in vencimentos.iterrows():
+                    if row['MUNICÍPIOS'] == i.upper():
+                        dia = vencimentos.loc[index, 'DIA']
+                        data = datetime.strptime(self.ids.dt_fim.text, '%d/%m/%Y')
+                        data = data + relativedelta(months=1)
+                        data = data.strftime('%m/%Y')
+                        data_venc = dia + '/' + data
+
+                pdf = FPDF(orientation='P', unit='mm', format='A4')
+                pdf.add_page()
+                pdf_w = 210
+                pdf_h = 297
+                pdf.set_font('Arial', 'B', 10)
+                pdf.image('G:\GECOT\FISCAL - Retenções\logo.png', x=10.0, y=10.0,
+                          h=50.0, w=100.0)
+                pdf.set_xy(10.0, 70.0)
+                pdf.multi_cell(w=125, h=5, txt='ISSQN Município de ' + i)
+                pdf.multi_cell(w=125, h=5, txt='A/C: Contabilidade - Contas a Pagar.')
+                pdf.set_xy(10.0, pdf.get_y() + 5)
+                pdf.multi_cell(w=150, h=5,
+                               txt='Planilha contendo valores a recolher referente ao mês ' + self.ids.dt_fim.text[3:])
+                pdf.multi_cell(w=125, h=5, txt='Valor a recolher através de BOLETO ANEXO - Contas a Pagar.')
+                pdf.multi_cell(w=125, h=5, txt='Vencimento: ' + data_venc)
+                pdf.set_xy(10.0, pdf.get_y() + 15)
+                pdf.multi_cell(w=30, h=5, txt='Nota Fiscal', border=1, align='C')
+                pdf.set_xy(40.0, pdf.get_y() - 5)
+                pdf.multi_cell(w=80, h=5, txt='Fornecedor', border=1, align='C')
+                pdf.set_xy(120.0, pdf.get_y() - 5)
+                pdf.multi_cell(w=40, h=5, txt='ISS a recolher', border=1, align='C')
+                pdf.set_font('')
+                resultado = cursor.fetchall()
+                soma = []
+                cont = 0
+                for lin in resultado:
+                    lin[2] = float(lin[2])
+                    soma.append(lin[2])
+                    lin[2] = str(lin[2]).replace('.', ',')
+                    pdf.multi_cell(w=30, h=5, txt=str(lin[0]), border=1, align='C')
+                    pdf.set_xy(40.0, pdf.get_y() - 5)
+                    pdf.multi_cell(w=80, h=5, txt=str(lin[1][:32]), border=1, align='C')
+                    pdf.set_xy(120.0, pdf.get_y() - 5)
+                    pdf.multi_cell(w=40, h=5, txt=str(lin[2]), border=1, align='C')
+                    cont += 1
+                for l in range(20 - cont):
+                    pdf.multi_cell(w=30, h=5, txt='', border=1)
+                    pdf.set_xy(40.0, pdf.get_y() - 5)
+                    pdf.multi_cell(w=80, h=5, txt='', border=1)
+                    pdf.set_xy(120.0, pdf.get_y() - 5)
+                    pdf.multi_cell(w=40, h=5, txt='', border=1)
+                pdf.set_xy(40.0, pdf.get_y())
+                pdf.multi_cell(w=80, h=5, txt='Valor total a recolher', border=1, align='C')
+                pdf.set_xy(120.0, pdf.get_y() - 5)
+                pdf.set_font('Arial', 'B', 10)
+                pdf.multi_cell(w=40, h=5, txt=str(round(sum(soma), 2)), border=1, align='C')
+                pdf.set_xy(10.0, pdf.get_y() + 30)
+                pdf.line(10, pdf.get_y(), 60, pdf.get_y())
+                pdf.multi_cell(w=100, h=5, txt='Pedro Henrique Carrilho')
+                pdf.multi_cell(w=100, h=5, txt='Contador Junior')
+                pdf.multi_cell(w=40, h=5, txt='GECOT')
+                data = self.ids.dt_fim.text[3:].replace('/', '-')
+                pdf.output(i + ' ' + data + '.pdf', 'F')
+
+        # ===========================Relatório INSS==========================================================#
+        if self.ids.check_inss.active == True:
+            cursor.execute('select data, NF, cnpj, fornecedor, valor_bruto, inss from notas_fiscais '
+                           'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) '
+                           '<= DateValue(?)',
+                           (self.ids.dt_ini.text, self.ids.dt_fim.text))
+            resultado = cursor.fetchall()
+            lista4 = [[], [], [], [], [], []]
+            for i in resultado:
+                for l in range(6):
+                    lista4[l].append(i[l])
+            tabela4 = pd.DataFrame(lista4).transpose()
+            tabela4.columns = ['Data Nota Fiscal', 'Nº NF', 'CNPJ', 'Fornecedor', 'Valor Bruto', 'INSS']
+            tabela4.to_excel(writer, sheet_name='INSS', index=False)
+        else:
+            pass
+
+        writer.save()
 
 
 class WindowManager(ScreenManager):

@@ -3,8 +3,9 @@
 
         MDList:
 
-            OneLineListItem:
-                text: "Tela Principal"
+            OneLineIconListItem:
+                text: 'Tela Principal'
+                icon: 'gmail'
                 on_press:
                     root.nav_drawer.set_state("close")
                     root.screen_manager.current = "principal"
@@ -26,6 +27,12 @@
                 on_press:
                     root.nav_drawer.set_state("close")
                     root.screen_manager.current = "exportar_dados"
+
+            OneLineListItem:
+                text: "Relatórios"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "gerar_relatorios"
 
 
 <MDTextField>
@@ -71,6 +78,9 @@ Screen:
             ExportarDados:
                 name: 'exportar_dados'
 
+            Relatorios:
+                name: 'gerar_relatorios'
+
         MDNavigationDrawer:
             id: nav_drawer
 
@@ -79,6 +89,10 @@ Screen:
                 nav_drawer: nav_drawer
 
 
+<Image>
+    source: 'drew.jpg'
+    allow_stretch: True
+    keep_ratio: False
 
 <Principal>:
 
@@ -88,20 +102,23 @@ Screen:
     FloatLayout:
         size_hint: (1, .915)
 
+        Image:
+
         MDRectangleFlatButton:
-            size_hint: 1,1
-            #text: 'Verificar'
-            #font_size: 20
-            #pos_hint: {'x':0.325, 'y':0.5}
+            size_hint: .60, .625
+            pos_hint: {'x': .075, 'y': .325}
+            text_color: (36/255,100/255,203/255,1)
+            #line_color: 1, 1, 1, 1
+            md_bg_color: 1, 1, 1, 1
+            ripple_scale: 0
+
+        MDRectangleFlatButton:
+            size_hint: .275, .625
+            pos_hint: {'x': .7, 'y': .325}
             text_color: (36/255,100/255,203/255,1)
             #line_color: 0, 0, 1, 1
             md_bg_color: 1, 1, 1, 1
             ripple_scale: 0
-
-        Image:
-            source: 'drew.jpg'
-            allow_stretch: True
-            keep_ratio: False
 
 
         Label:
@@ -285,6 +302,16 @@ Screen:
 
 <CadastroPrestador>
 
+    Image:
+        size_hint_y: 0.92
+
+    MDRectangleFlatButton:
+        size_hint: .60, .775
+        pos_hint: {'x': .2, 'y': .1}
+        text_color: (36/255,100/255,203/255,1)
+        #line_color: 1, 1, 1, 1
+        md_bg_color: 1, 1, 1, 1
+        ripple_scale: 0
 
     MDLabel:
         text: "Cadastro Prestadores"
@@ -348,6 +375,9 @@ Screen:
 
         root.gerar_banco()
 
+    Image:
+        size_hint_y: 0.92
+
     MDLabel:
         text: "Carregando Banco de Dados..."
         halign: "center"
@@ -355,7 +385,7 @@ Screen:
 
     MDRectangleFlatButton:
         text: 'Editar'
-        pos_hint: {'x':0.1, 'y':0.02}
+        pos_hint: {'x':0.45, 'y':0.02}
         size_hint: .1,.05
         on_release:
             root.pegar_check()
@@ -366,3 +396,97 @@ Screen:
 
     on_enter:
         root.exp_banco()
+
+<Relatorios>:
+
+    Image:
+        size_hint_y: 0.91
+
+    MDRectangleFlatButton:
+        size_hint: .5, .72
+        pos_hint: {'x': .25, 'y': .1}
+        text_color: (36/255,100/255,203/255,1)
+        #line_color: 1, 1, 1, 1
+        md_bg_color: 1, 1, 1, 1
+        ripple_scale: 0
+
+    FloatLayout:
+        size_hint: (1, .915)
+
+        MDTextField:
+            id: dt_ini
+            pos_hint: {'x': .35, 'y': .75}
+            hint_text: "Data Inicial"
+
+        MDTextField:
+            id: dt_fim
+            pos_hint: {'x': .55, 'y': .75}
+            hint_text: "Data Final"
+
+        MDLabel:
+            text: 'a'
+            font_size: 20
+            pos_hint: {'x': .495, 'y': .74}
+            size_hint: .2, .1
+
+        MDCheckbox:
+            id: check_ir
+            size_hint: None, None
+            size: "48dp", "48dp"
+            pos_hint: {'x': .4, 'y': .60}
+
+        MDCheckbox:
+            id: check_crf
+            size_hint: None, None
+            size: "48dp", "48dp"
+            pos_hint: {'x': .4, 'y': .55}
+
+        MDCheckbox:
+            id: check_iss
+            size_hint: None, None
+            size: "48dp", "48dp"
+            pos_hint: {'x': .4, 'y': .5}
+
+        MDCheckbox:
+            id: check_inss
+            size_hint: None, None
+            size: "48dp", "48dp"
+            pos_hint: {'x': .4, 'y': .45}
+
+        MDLabel:
+            text: 'Imposto de Renda'
+            font_size: 18
+            pos_hint: {'x': .45, 'y': .585}
+            size_hint: .15, .1
+
+        MDLabel:
+            text: 'Contribuições'
+            font_size: 18
+            pos_hint: {'x': .45, 'y': .535}
+            size_hint: .15, .1
+
+        MDLabel:
+            text: 'Imposto S/ Serviços'
+            font_size: 18
+            pos_hint: {'x': .45, 'y': .485}
+            size_hint: .15, .1
+
+        MDLabel:
+            text: 'Imposto S/ Seguridade Social'
+            font_size: 18
+            pos_hint: {'x': .45, 'y': .435}
+            size_hint: .20, .1
+
+        MDTextField:
+            id: diretorio
+            text: 'C:\\Users\\loliveira\\PycharmProjects\\kivy\\Nota-Serviços-Kivy\\Nota-Servicos-Kivy'
+            pos_hint: {'x': .35, 'y': .3}
+            size_hint: .3, .1
+            hint_text: "Diretório"
+
+
+        MDRectangleFlatButton:
+            text: 'Gerar Relatórios'
+            pos_hint: {'x':0.425, 'y':0.15}
+            on_release:
+                root.relatorios()
