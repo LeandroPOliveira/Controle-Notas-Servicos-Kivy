@@ -3,9 +3,8 @@
 
         MDList:
 
-            OneLineIconListItem:
+            OneLineListItem:
                 text: 'Tela Principal'
-                icon: 'gmail'
                 on_press:
                     root.nav_drawer.set_state("close")
                     root.screen_manager.current = "principal"
@@ -479,7 +478,7 @@ Screen:
 
         MDTextField:
             id: diretorio
-            text: 'C:\\Users\\loliveira\\PycharmProjects\\kivy\\Nota-Serviços-Kivy\\Nota-Servicos-Kivy'
+            text: ''
             pos_hint: {'x': .35, 'y': .3}
             size_hint: .3, .1
             hint_text: "Diretório"
