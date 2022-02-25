@@ -83,12 +83,15 @@ class Principal(Screen):
             pass
 
     def calcula_imposto(self, instance, aliquota):
-        if aliquota.text != '':
-            tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-            instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
+        if self.ids.v_liq.text == '':
+            if aliquota.text != '':
+                tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+                instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
+            else:
+                instance.text = '0'
+                aliquota.text = '0'
         else:
-            instance.text = '0'
-            aliquota.text = '0'
+            pass
 
 
     def valor_liq(self):
@@ -357,10 +360,7 @@ class CadastroPrestador(Screen):
             cnx.commit()
             cnx.close()
         except:
-            self.dialog = MDDialog(
-                text="O CNPJ informado não consta no cadastro!",
-                radius=[20, 7, 20, 7],)
-
+            self.dialog = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7],)
             self.dialog.open()
 
 
@@ -376,12 +376,13 @@ class CadastroPrestador(Screen):
                 cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?)', (self.ids.cad_cnpj.text, self.ids.cad_nome.text,
                                                                             self.ids.cad_mun.text, self.ids.cad_regime.text))
                 cnx.commit()
-                # tkinter.messagebox.showinfo('Notas Fiscais de Serviço', 'Registro incluído com sucesso!')
                 cnx.close()
+                self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
+                self.dialog.open()
 
             except:
-                pass
-                # tkinter.messagebox.showerror('Notas Fiscais de Serviço', 'Erro! CNPJ já cadastrado!')
+                self.dialog = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
+                self.dialog.open()
 
 
     def atualizar_cadastro(self):
