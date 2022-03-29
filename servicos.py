@@ -1,5 +1,6 @@
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, BooleanProperty
 from kivymd.app import MDApp
+from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.datatables import MDDataTable
 from kivy.lang.builder import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -15,8 +16,10 @@ from dateutil.relativedelta import relativedelta
 from openpyxl.reader.excel import load_workbook
 from fpdf import FPDF
 
+
 class ContentNavigationDrawer(Screen):
     pass
+
 
 class Principal(Screen):
     descr_serv = StringProperty('')
@@ -28,7 +31,7 @@ class Principal(Screen):
             self.diretorio = dados[0]
             self.diretorio = self.diretorio.rstrip().split('\\')
             self.responsavel = dados[1].split('; ')
-
+            self.dialog = None
 
     def mascara(self):
         mask = self.ids.num_cnpj.text
@@ -39,24 +42,45 @@ class Principal(Screen):
             pass
 
     def busca_cadastro(self):
-        if self.ids.num_cnpj.text != '':
-            lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-            cursor = self.cnx.cursor()
-            cursor.execute('select nome from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
-            busca_nome = cursor.fetchone()
+        if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():
+            try:
+                lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
+                self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+                cursor = self.cnx.cursor()
+                cursor.execute('select nome from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
+                busca_nome = cursor.fetchone()
 
-            self.ids.cod_fornec.text = busca_nome[0]
+                self.ids.cod_fornec.text = busca_nome[0]
 
-            cursor.execute('select optante_simples from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
-            busca_simples = cursor.fetchone()
-            self.ids.regime_trib.text = busca_simples[0]
+                cursor.execute('select optante_simples from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
+                busca_simples = cursor.fetchone()
+                self.ids.regime_trib.text = busca_simples[0]
+            except TypeError:
+                if not self.dialog:
+                    self.dialog = MDDialog(text="Fornecedor não cadastrado. Deseja cadastrar?",
+                                           buttons=[MDFlatButton(text="NÃO",
+                                                                 theme_text_color="Custom",
+                                                                 on_press=self.fecha_dialog),
+                                                    MDRaisedButton(text="SIM", theme_text_color="Custom",
+                                                                   on_press=self.pega_tela), ], )
+                self.dialog.open()
+        else:
+            pass
+
+
+    def pega_tela(self, inst):
+        self.manager.current = 'tela_prest'
+        self.dialog.dismiss()
+
+    def fecha_dialog(self, inst):
+        self.dialog.dismiss()
 
     def busca_servico(self):
         lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = self.cnx.cursor()
         if self.ids.cod_serv.text != '':
+            self.ids.cod_serv.text = self.ids.cod_serv.text.lstrip('0')
             lista = {'irrf': self.ids.aliq_ir, 'crf': self.ids.aliq_crf, 'inss': self.ids.aliq_inss,
                      'iss': self.ids.aliq_iss}
             for imp, aliq in lista.items():
@@ -64,51 +88,60 @@ class Principal(Screen):
                     cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
                     busca = cursor.fetchone()
                     aliq.text = str(round(busca[0], 2)).replace('.', ',')
+                if self.ids.inss_reduzido.active is True:
+                    self.ids.aliq_inss.text = '3,5'
+
                 else:
-                    aliq.text = '0,00'
+                    if imp == 'iss':
+                        try:
+                            cursor.execute(f'select ALIQUOTA from cadastro where CNPJ = ?', (self.ids.num_cnpj.text,))
+                            busca = cursor.fetchone()
+                            aliq.text = str(round(busca[0], 2)).replace('.', ',')
+                        except TypeError:
+                            aliq.text = '0'
+                    
 
         if self.ids.regime_trib.text not in 'Simplessimples':
             try:
                 cursor.execute('select aliq_iss from municipios where municipio = ? and cod_iss = ?',
-                               (self.ids.mun_iss.text, self.ids.cod_serv.text, ))
+                               (self.ids.mun_iss.text.capitalize(), self.ids.cod_serv.text,))
                 busca_aliq = cursor.fetchone()
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
             except:
                 pass
-        try:
-            cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
-            busca2 = cursor.fetchone()
-            self.descr_serv = busca2[0][0:190]
-        except:
-            pass
+        # try:
+        cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
+        busca2 = cursor.fetchone()
+        self.descr_serv = busca2[0][0:190]
+        # except:
+        #     pass
 
     def calcula_imposto(self, instance, aliquota):
-        if self.ids.v_liq.text == '':
-            if aliquota.text != '':
+        if aliquota.text != '':
+            tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+            instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
+        if aliquota.text == '11,00' or aliquota.text == '3,5':
+            if '%' in self.ids.exclusao.text:
                 tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-                instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
+                instance.text = str(round(float(tupla[1]) * float(self.ids.exclusao.text.replace('%', '')) / 100 *
+                                          (float(tupla[0]) / 100), 2)).replace('.', ',')
             else:
-                instance.text = '0'
-                aliquota.text = '0'
-        else:
-            pass
-
+                tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+                instance.text = str(round((float(tupla[1]) - float(self.ids.exclusao.text.replace(',', '.'))) *
+                                          (float(tupla[0]) / 100), 2)).replace('.', ',')
 
     def valor_liq(self):
         self.ids.v_liq.text = str(round(float(self.ids.v_bruto.text.replace(',', '.')) -
-         (sum([float(self.ids.irrf.text.replace(',', '.')),
-         float(self.ids.crf.text.replace(',', '.')),
-         float(self.ids.inss.text.replace(',', '.')),
-         float(self.ids.iss.text.replace(',', '.'))])), 2)).replace('.', ',')
+                                        (sum([float(self.ids.irrf.text.replace(',', '.')),
+                                              float(self.ids.crf.text.replace(',', '.')),
+                                              float(self.ids.inss.text.replace(',', '.')),
+                                              float(self.ids.iss.text.replace(',', '.'))])), 2)).replace('.', ',')
 
     def data_dia(self):
         if self.ids.dt_nota.text == '':
             self.ids.dt_analise.text = date.today().strftime('%d/%m/%Y')
         else:
             pass
-
-
-
 
     def adicionar(self):
         if self.ids.num_cnpj.text == '':
@@ -131,7 +164,7 @@ class Principal(Screen):
                                  self.ids.num_nota.text,
                                  self.ids.num_cnpj.text,
                                  self.ids.cod_fornec.text,
-                                 self.ids.mun_iss.text,
+                                 self.ids.mun_iss.text.capitalize(),
                                  self.ids.regime_trib.text,
                                  self.ids.cod_serv.text,
                                  self.ids.v_bruto.text,
@@ -151,8 +184,6 @@ class Principal(Screen):
 
             self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog.open()
-
-
 
     def limpar(self):
         entradas = [self.ids.dt_analise, self.ids.dt_nota,
@@ -206,16 +237,16 @@ class Principal(Screen):
             self.ids.mun_iss.text = row[7]
             self.ids.regime_trib.text = row[8]
             self.ids.cod_serv.text = row[9]
-            self.ids.v_bruto.text = str(round(row[10],2)).replace('.',',')
-            self.ids.aliq_ir.text = str(round(row[11],2)).replace('.',',')
-            self.ids.irrf.text = str(round(row[12],2)).replace('.',',')
-            self.ids.aliq_crf.text = str(round(row[13],2)).replace('.',',')
-            self.ids.crf.text = str(round(row[14],2)).replace('.',',')
-            self.ids.aliq_inss.text = str(round(row[15],2)).replace('.',',')
-            self.ids.inss.text = str(round(row[16],2)).replace('.',',')
-            self.ids.aliq_iss.text = str(round(row[17],2)).replace('.',',')
-            self.ids.iss.text = str(round(row[18],2)).replace('.',',')
-            self.ids.v_liq.text = str(round(row[19],2)).replace('.',',')
+            self.ids.v_bruto.text = str(round(row[10], 2)).replace('.', ',')
+            self.ids.aliq_ir.text = str(round(row[11], 2)).replace('.', ',')
+            self.ids.irrf.text = str(round(row[12], 2)).replace('.', ',')
+            self.ids.aliq_crf.text = str(round(row[13], 2)).replace('.', ',')
+            self.ids.crf.text = str(round(row[14], 2)).replace('.', ',')
+            self.ids.aliq_inss.text = str(round(row[15], 2)).replace('.', ',')
+            self.ids.inss.text = str(round(row[16], 2)).replace('.', ',')
+            self.ids.aliq_iss.text = str(round(row[17], 2)).replace('.', ',')
+            self.ids.iss.text = str(round(row[18], 2)).replace('.', ',')
+            self.ids.v_liq.text = str(round(row[19], 2)).replace('.', ',')
             cnx.commit()
             cnx.close()
         except:
@@ -223,34 +254,34 @@ class Principal(Screen):
             self.dialog.open()
             self.limpar()
 
-
     def atualizar(self):
         try:
             lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
             cursor = cnx.cursor()
-            cursor.execute('update notas_fiscais set DATA_ANALISE=?, DATA=?, DATA_VENCIMENTO=?, NF=?, CNPJ=?, FORNECEDOR=?, '
-                           'CIDADE=?, SIMPLES_NACIONAL=?, CODIGO_SERVICO=?, VALOR_BRUTO=?, ALIQ_IRRF=?, IRRF=?, ALIQ_CRF=?, '
-                           'crf=?, ALIQ_INSS=?, INSS=?, ALIQ_ISS=?, ISS=?, VALOR_LIQUIDO=? where ID=?',(self.ids.dt_analise.text,
-             self.ids.dt_nota.text,
-             self.ids.dt_venc.text,
-             self.ids.num_nota.text,
-             self.ids.num_cnpj.text,
-             self.ids.cod_fornec.text,
-             self.ids.mun_iss.text,
-             self.ids.regime_trib.text,
-             self.ids.cod_serv.text,
-             self.ids.v_bruto.text,
-             self.ids.aliq_ir.text,
-             self.ids.irrf.text,
-             self.ids.aliq_crf.text,
-             self.ids.crf.text,
-             self.ids.aliq_inss.text,
-             self.ids.inss.text,
-             self.ids.aliq_iss.text,
-             self.ids.iss.text,
-             self.ids.v_liq.text,
-            self.ids.cod_id.text))
+            cursor.execute(
+                'update notas_fiscais set DATA_ANALISE=?, DATA=?, DATA_VENCIMENTO=?, NF=?, CNPJ=?, FORNECEDOR=?, '
+                'CIDADE=?, SIMPLES_NACIONAL=?, CODIGO_SERVICO=?, VALOR_BRUTO=?, ALIQ_IRRF=?, IRRF=?, ALIQ_CRF=?, '
+                'crf=?, ALIQ_INSS=?, INSS=?, ALIQ_ISS=?, ISS=?, VALOR_LIQUIDO=? where ID=?', (self.ids.dt_analise.text,
+                                                                                              self.ids.dt_nota.text,
+                                                                                              self.ids.dt_venc.text,
+                                                                                              self.ids.num_nota.text,
+                                                                                              self.ids.num_cnpj.text,
+                                                                                              self.ids.cod_fornec.text,
+                                                                                              self.ids.mun_iss.text,
+                                                                                              self.ids.regime_trib.text,
+                                                                                              self.ids.cod_serv.text,
+                                                                                              self.ids.v_bruto.text,
+                                                                                              self.ids.aliq_ir.text,
+                                                                                              self.ids.irrf.text,
+                                                                                              self.ids.aliq_crf.text,
+                                                                                              self.ids.crf.text,
+                                                                                              self.ids.aliq_inss.text,
+                                                                                              self.ids.inss.text,
+                                                                                              self.ids.aliq_iss.text,
+                                                                                              self.ids.iss.text,
+                                                                                              self.ids.v_liq.text,
+                                                                                              self.ids.cod_id.text))
             cnx.commit()
             cnx.close()
             self.dialog = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
@@ -261,8 +292,6 @@ class Principal(Screen):
         except:
             self.dialog = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
             self.dialog.open()
-
-
 
     def inserir_notas(self):
 
@@ -284,9 +313,6 @@ class Principal(Screen):
                     self.ids.aliq_iss,
                     self.ids.iss,
                     self.ids.v_liq]
-        #
-        # print(BancoDados.lista)
-        # print(len(BancoDados.lista))
 
         if len(BancoDados.lista) == 0:
             pass
@@ -298,7 +324,7 @@ class Principal(Screen):
                     if index < 10:
                         entrada.text = str(BancoDados.lista[index])
                     else:
-                        entrada.text = str(round(float(BancoDados.lista[index]),2)).replace('.', ',')
+                        entrada.text = str(round(float(BancoDados.lista[index]), 2)).replace('.', ',')
             BancoDados.lista.clear()
         else:
             for index, entrada in enumerate(entradas):
@@ -312,7 +338,7 @@ class Principal(Screen):
         print(BancoDados.lista)
 
     def lembrar_lancamento(self):
-        if self.ids.lembrar.active == True:
+        if self.ids.lembrar.active:
             lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
             cursor = cnx.cursor()
@@ -333,10 +359,12 @@ class Principal(Screen):
             self.limpar()
 
 
-
-
 class CadastroPrestador(Screen):
     teste = StringProperty(None)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.dialog = None
 
     def mascara_cad(self):  # função para formatar CNPJ
         mask = self.ids.cad_cnpj.text
@@ -357,12 +385,12 @@ class CadastroPrestador(Screen):
             self.ids.cad_nome.text = row[1]
             self.ids.cad_mun.text = row[2]
             self.ids.cad_regime.text = row[3]
+            self.ids.aliq_simples.text = str(row[4])
             cnx.commit()
             cnx.close()
         except:
-            self.dialog = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7],)
+            self.dialog = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
             self.dialog.open()
-
 
     def cadastrar_prestador(self):
         if self.ids.cad_cnpj.text == '':
@@ -373,36 +401,40 @@ class CadastroPrestador(Screen):
                 lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
                 cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
                 cursor = cnx.cursor()
-                cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?)', (self.ids.cad_cnpj.text, self.ids.cad_nome.text,
-                                                                            self.ids.cad_mun.text, self.ids.cad_regime.text))
+                cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?, ?)',
+                               (self.ids.cad_cnpj.text, self.ids.cad_nome.text,
+                                self.ids.cad_mun.text, self.ids.cad_regime.text, self.ids.aliq_simples.text))
                 cnx.commit()
                 cnx.close()
                 self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
                 self.dialog.open()
+                self.manager.current = 'principal'
 
             except:
                 self.dialog = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
                 self.dialog.open()
-
 
     def atualizar_cadastro(self):
 
         lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
-        cursor.execute('UPDATE cadastro SET NOME=?, MUNICÍPIO=?, OPTANTE_SIMPLES=? WHERE CNPJ=?',
+        cursor.execute('UPDATE cadastro SET NOME=?, MUNICÍPIO=?, OPTANTE_SIMPLES=?, ALIQUOTA=? WHERE CNPJ=?',
                        (self.ids.cad_nome.text,
                         self.ids.cad_mun.text,
                         self.ids.cad_regime.text,
+                        self.ids.aliq_simples.text,
                         self.ids.cad_cnpj.text))
         cnx.commit()
         cnx.close()
 
 
-
-
 class BancoDados(Screen):
     lista = []
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.data_tables = None
 
     def gerar_banco(self):
         # conectar banco de dados
@@ -427,11 +459,7 @@ class BancoDados(Screen):
             self.total_lancamento.append(tupla)
             lin_lancamento.clear()
 
-
-
-
         self.add_datatable()
-
 
     def add_datatable(self):
 
@@ -466,25 +494,27 @@ class BancoDados(Screen):
 
         self.add_widget(self.data_tables)
 
-
     def pegar_check(self):
         self.lista.clear()
         for item in self.data_tables.get_row_checks():
             self.lista.append(item)
 
-class ExportarDados(Screen):
 
+class ExportarDados(Screen):
 
     def exp_banco(self):
         # exportar banco completo para consultas e geração de guias de recolhimento
-        book = load_workbook('Programa Planilha de retenção.xlsx')
-        writer = pd.ExcelWriter('Programa Planilha de retenção.xlsx', engine='openpyxl')
+        book = load_workbook(
+            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção-teste.xlsx'))
+        writer = pd.ExcelWriter(
+            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção-teste.xlsx'),
+            engine='openpyxl')
         writer.book = book
 
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
 
         # Conectar ao banco
-        lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
+        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
         cursor.execute('select * from notas_fiscais')
@@ -511,15 +541,16 @@ class ExportarDados(Screen):
         self.dialog = MDDialog(text="Banco exportado com sucesso!", radius=[20, 7, 20, 7], )
         self.dialog.open()
 
-class Relatorios(Screen):
 
+class Relatorios(Screen):
 
     def relatorios(self):
 
         # Criar planilha para gerar arquivo
-        writer = pd.ExcelWriter(os.path.join(*Principal().diretorio, 'Relatórios.xlsx'), engine='xlsxwriter')
+        writer = pd.ExcelWriter(os.path.join(*self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
+                                engine='xlsxwriter')
         # Conectar ao banco
-        lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
+        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
 
@@ -574,9 +605,6 @@ class Relatorios(Screen):
 
                 vencimentos = pd.read_excel(os.path.join(*Principal().diretorio, 'Programa Planilha de retenção.xlsx'),
                                             sheet_name='Relatório ISS', usecols=[9, 10], skiprows=10, dtype=str)
-
-
-
 
                 for index, row in vencimentos.iterrows():
                     if row['MUNICÍPIOS'] == i.upper():
@@ -670,7 +698,6 @@ class NotasFiscais(MDApp):
     def build(self):
         Window.clearcolor = (1, 1, 1, 1)
         return Builder.load_file('servicos.kv')
-
 
 
 NotasFiscais().run()

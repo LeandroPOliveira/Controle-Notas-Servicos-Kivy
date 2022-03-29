@@ -185,9 +185,16 @@ Screen:
             hint_text: "Código Serviço"
 
         MDLabel:
-            size_hint: (0.3, 0.09)
+            size_hint: (0.17, 0.09)
             pos_hint: {'x': .30, 'y': .475}
             text: root.descr_serv
+
+        MDTextField:
+            id: exclusao
+            #size_hint: (., .365)
+            pos_hint: {'x': .53, 'y': .45}
+            hint_text: "Excluir Mat/Equipo"
+            helper_text: 'Em porcentagem ou valor'
 
 
         MDTextField:
@@ -269,6 +276,19 @@ Screen:
             pos_hint: {'x': .14, 'y': .35}
 
 
+
+        MDSwitch:
+            id: inss_reduzido
+            size_hint: None, None
+            #size: "48dp", "48dp"
+            pos_hint: {'x': .51, 'y': .365}
+
+        MDLabel:
+            text: 'Desoneração folha (3,5%)'
+            valign: 'center'
+            size_hint: (.2, .1)
+            pos_hint: {'x': .54, 'y': .35}
+
         MDRectangleFlatButton:
             text: 'Adicionar'
             pos_hint: {'x':0.10, 'y':0.15}
@@ -314,8 +334,9 @@ Screen:
 
     MDLabel:
         text: "Cadastro Prestadores"
-        pos_hint: {'x': .4, 'y': .725}
+        pos_hint: {'x': .35, 'y': .725}
         size_hint: .3, .2
+        halign: 'center'
         font_size: 30
         theme_text_color: "Custom"
         text_color: (33/255,150/255,243/255,1)
@@ -323,31 +344,41 @@ Screen:
 
     MDTextField:
         id: cad_cnpj
-        size_hint: (.2, .1)
-        pos_hint: {'x': .4, 'y': .65}
+        font_size: 20
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .7}
         hint_text: "CNPJ"
 
     MDTextField:
         id: cad_nome
-        size_hint: (.2, .1)
-        pos_hint: {'x': .4, 'y': .525}
+        font_size: 20
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .6}
         hint_text: "FORNECEDOR"
         on_focus:
             root.mascara_cad()
 
     MDTextField:
         id: cad_mun
-        size_hint: (.2, .1)
-        pos_hint: {'x': .4, 'y': .40}
+        font_size: 20
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .5}
         hint_text: "MUNICÍPIO"
 
     MDTextField:
         id: cad_regime
-        size_hint: (.2, .1)
-        pos_hint: {'x': .4, 'y': .275}
+        font_size: 20
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .4}
         hint_text: "REGIME TRIBUTÁRIO"
         helper_text: 'Opções: Normal, Simples, Imune.'
 
+    MDTextField:
+        id: aliq_simples
+        font_size: 20
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .3}
+        hint_text: "ALIQUOTA SIMPLES"
 
     MDRectangleFlatButton:
         text: 'Cadastrar'
