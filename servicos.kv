@@ -37,6 +37,7 @@
 <MDTextField>
     size_hint: (.1, .1)
     mode: "rectangle"
+    font_size: 20
     line_color_normal: [0,0,0,1]
     text_color_normal: 0, 0, 0, 1
     text_color_focus: 0, 0, 0, 1
@@ -44,7 +45,7 @@
 
 <MDRectangleFlatButton>
     size_hint: (.15, .08)
-    font_size: 20
+    font_size: 26
     text_color: (1, 1, 1, 1)
     #line_color: 0, 0, 1, 1
     md_bg_color: (33/255,150/255,243/255,1)
@@ -119,7 +120,6 @@ Screen:
             md_bg_color: 1, 1, 1, 1
             ripple_scale: 0
 
-
         Label:
             text: ''
             id: cod_id
@@ -152,8 +152,6 @@ Screen:
             size_hint: (0.25, 0.09)
             pos_hint: {'x': .1, 'y': .725}
             hint_text: "CNPJ"
-
-
 
         MDTextField:
             id: cod_fornec
@@ -191,7 +189,7 @@ Screen:
 
         MDTextField:
             id: exclusao
-            #size_hint: (., .365)
+            text: '0'
             pos_hint: {'x': .53, 'y': .45}
             hint_text: "Excluir Mat/Equipo"
             helper_text: 'Em porcentagem ou valor'
@@ -205,9 +203,9 @@ Screen:
             on_focus:
                 root.busca_servico()
 
-
         MDTextField:
             id: aliq_ir
+            text: '0'
             pos_hint: {'x': .725, 'y': .85}
             hint_text: "Alíq. IRRF"
 
@@ -220,6 +218,7 @@ Screen:
 
         MDTextField:
             id: aliq_crf
+            text: '0'
             pos_hint: {'x': .725, 'y': .725}
             hint_text: "Alíq. CRF"
 
@@ -232,6 +231,7 @@ Screen:
 
         MDTextField:
             id: aliq_inss
+            text: '0'
             pos_hint: {'x': .725, 'y': .60}
             hint_text: "Alíq. INSS"
 
@@ -244,6 +244,7 @@ Screen:
 
         MDTextField:
             id: aliq_iss
+            text: '0'
             pos_hint: {'x': .725, 'y': .475}
             hint_text: "Alíq. ISS"
 
@@ -266,26 +267,26 @@ Screen:
             id: lembrar
             size_hint: None, None
             #size: "48dp", "48dp"
-            pos_hint: {'x': .1, 'y': .365}
+            pos_hint: {'x': .1, 'y': .37}
             on_active:
                 root.lembrar_lancamento()
 
         MDLabel:
             text: 'Repetir Lançamento'
             size_hint: (.2, .1)
-            pos_hint: {'x': .14, 'y': .35}
-
-
+            font_size: 20
+            pos_hint: {'x': .13, 'y': .35}
 
         MDSwitch:
             id: inss_reduzido
             size_hint: None, None
             #size: "48dp", "48dp"
-            pos_hint: {'x': .51, 'y': .365}
+            pos_hint: {'x': .51, 'y': .37}
 
         MDLabel:
             text: 'Desoneração folha (3,5%)'
             valign: 'center'
+            font_size: 20
             size_hint: (.2, .1)
             pos_hint: {'x': .54, 'y': .35}
 
@@ -341,7 +342,6 @@ Screen:
         theme_text_color: "Custom"
         text_color: (33/255,150/255,243/255,1)
 
-
     MDTextField:
         id: cad_cnpj
         font_size: 20
@@ -396,13 +396,12 @@ Screen:
         text: 'Pesquisar'
         pos_hint: {'x':0.6, 'y':0.15}
         on_release:
-            root.pesquisar_fornecedor()
+            root.pesquisar_prestador()
 
 
 <BancoDados>:
 
     on_enter:
-
         root.gerar_banco()
 
     Image:
@@ -426,6 +425,7 @@ Screen:
 
     on_enter:
         root.exp_banco()
+
 
 <Relatorios>:
 
@@ -513,7 +513,6 @@ Screen:
             pos_hint: {'x': .35, 'y': .3}
             size_hint: .3, .1
             hint_text: "Diretório"
-
 
         MDRectangleFlatButton:
             text: 'Gerar Relatórios'

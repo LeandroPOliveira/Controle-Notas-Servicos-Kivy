@@ -1,11 +1,10 @@
-from kivy.properties import StringProperty, BooleanProperty
+from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.datatables import MDDataTable
 from kivy.lang.builder import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.metrics import dp
-from kivy.core.window import Window
 import os
 from datetime import datetime, date
 import pyodbc
@@ -26,14 +25,15 @@ class Principal(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        with open('dados.txt', 'r') as bd:
+        self.cnx = None
+        with open('dados.txt', 'r', encoding='utf-8') as bd:  # Caminho da pasta no servidor com o banco de dados
             dados = bd.readlines()
             self.diretorio = dados[0]
             self.diretorio = self.diretorio.rstrip().split('\\')
             self.responsavel = dados[1].split('; ')
             self.dialog = None
 
-    def mascara(self):
+    def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
         if mask != '' and '/' not in mask and len(mask) >= 14:
             mask_cnpj = f'{mask[:2]}.{mask[2:5]}.{mask[5:8]}/{mask[8:12]}-{mask[12:14]}'
@@ -41,17 +41,17 @@ class Principal(Screen):
         else:
             pass
 
-    def busca_cadastro(self):
-        if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():
+    def busca_cadastro(self):  # Buscar dados com o CNPJ fornecido de Nome, Situação Tributária
+        if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
             try:
                 lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
                 self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
                 cursor = self.cnx.cursor()
                 cursor.execute('select nome from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
                 busca_nome = cursor.fetchone()
-
                 self.ids.cod_fornec.text = busca_nome[0]
 
+                # Buscar Situação Tributária
                 cursor.execute('select optante_simples from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
                 busca_simples = cursor.fetchone()
                 self.ids.regime_trib.text = busca_simples[0]
@@ -67,15 +67,14 @@ class Principal(Screen):
         else:
             pass
 
-
-    def pega_tela(self, inst):
+    def pega_tela(self, inst):  # Ir à tela de cadastro para fornecedores não cadastrados
         self.manager.current = 'tela_prest'
         self.dialog.dismiss()
 
-    def fecha_dialog(self, inst):
+    def fecha_dialog(self, inst):  # Fecha caixa de diálogo caso não deseje cadastrar
         self.dialog.dismiss()
 
-    def busca_servico(self):
+    def busca_servico(self):  # Buscar no cadastro as aliquotas segundo o código de serviço utilizado
         lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = self.cnx.cursor()
@@ -84,66 +83,72 @@ class Principal(Screen):
             lista = {'irrf': self.ids.aliq_ir, 'crf': self.ids.aliq_crf, 'inss': self.ids.aliq_inss,
                      'iss': self.ids.aliq_iss}
             for imp, aliq in lista.items():
-                if self.ids.regime_trib.text in 'nãoNÃOnaoNAONãoNormalnormal':
+                if self.ids.regime_trib.text in 'nãoNÃOnaoNAONãoNormalnormal':  # Caso não seja Simples Nacional
                     cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
                     busca = cursor.fetchone()
                     aliq.text = str(round(busca[0], 2)).replace('.', ',')
-                if self.ids.inss_reduzido.active is True:
+                if self.ids.inss_reduzido.active is True:  # Empresa com desoneração a aliquota é 3,5%
                     self.ids.aliq_inss.text = '3,5'
 
                 else:
-                    if imp == 'iss':
+                    if imp == 'iss':  # Buscar alíquota do Simples do prestador
                         try:
                             cursor.execute(f'select ALIQUOTA from cadastro where CNPJ = ?', (self.ids.num_cnpj.text,))
                             busca = cursor.fetchone()
                             aliq.text = str(round(busca[0], 2)).replace('.', ',')
                         except TypeError:
                             aliq.text = '0'
-                    
 
-        if self.ids.regime_trib.text not in 'Simplessimples':
+        if self.ids.regime_trib.text not in 'Simplessimples':  # Não sendo simples, buscar aliquota da prefeitura do cad
             try:
                 cursor.execute('select aliq_iss from municipios where municipio = ? and cod_iss = ?',
                                (self.ids.mun_iss.text.capitalize(), self.ids.cod_serv.text,))
                 busca_aliq = cursor.fetchone()
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
-            except:
+            except TypeError:
                 pass
-        # try:
-        cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
-        busca2 = cursor.fetchone()
-        self.descr_serv = busca2[0][0:190]
-        # except:
-        #     pass
+        try:
+            cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
+            busca2 = cursor.fetchone()
+            self.descr_serv = busca2[0][0:190]
+        except TypeError:
+            pass
 
-    def calcula_imposto(self, instance, aliquota):
+    def calcula_imposto(self, instance, aliquota):  # calcular impostos com o valor bruto fornecido e aliquotas
         if aliquota.text != '':
             tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
             instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
-        if aliquota.text == '11,00' or aliquota.text == '3,5':
-            if '%' in self.ids.exclusao.text:
+        if aliquota.text == '11,00' or aliquota.text == '3,5':  # Construção civil
+            if '%' in self.ids.exclusao.text:  # Dedução de materiais e equipamentos do valor tributado em %
                 tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
                 instance.text = str(round(float(tupla[1]) * float(self.ids.exclusao.text.replace('%', '')) / 100 *
                                           (float(tupla[0]) / 100), 2)).replace('.', ',')
-            else:
+            else:  # Dedução de materiais e equipamentos do valor tributado em R$
                 tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
                 instance.text = str(round((float(tupla[1]) - float(self.ids.exclusao.text.replace(',', '.'))) *
                                           (float(tupla[0]) / 100), 2)).replace('.', ',')
+        aliq_ir_pf = ['7,50', '15,00', '22,50', '27,50']  # Para aluguéis PF, aliquotas vigentes do IRRF
+        deducao = ['142,80', '354,80', '636,13', '869,36']  # Parcela a ser deduzida do cálculo
+        if aliquota.text in aliq_ir_pf:
+            tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+            instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100) -
+                                      float(deducao[aliq_ir_pf.index(aliquota.text)].replace(',', '.')), 2)).replace(
+                '.', ',')
 
-    def valor_liq(self):
+    def valor_liq(self):  # Calcular valor líquido a pagar
         self.ids.v_liq.text = str(round(float(self.ids.v_bruto.text.replace(',', '.')) -
                                         (sum([float(self.ids.irrf.text.replace(',', '.')),
                                               float(self.ids.crf.text.replace(',', '.')),
                                               float(self.ids.inss.text.replace(',', '.')),
                                               float(self.ids.iss.text.replace(',', '.'))])), 2)).replace('.', ',')
 
-    def data_dia(self):
+    def data_dia(self):  # Trazer atual para o campo data da análise
         if self.ids.dt_nota.text == '':
             self.ids.dt_analise.text = date.today().strftime('%d/%m/%Y')
         else:
             pass
 
-    def adicionar(self):
+    def adicionar(self):  # Adicionar nota fiscal lançada
         if self.ids.num_cnpj.text == '':
             self.dialog = MDDialog(
                 text="Insira todas as informações!",
@@ -185,7 +190,7 @@ class Principal(Screen):
             self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog.open()
 
-    def limpar(self):
+    def limpar(self):  # Limpar os campos
         entradas = [self.ids.dt_analise, self.ids.dt_nota,
                     self.ids.dt_venc,
                     self.ids.num_nota,
@@ -209,7 +214,7 @@ class Principal(Screen):
             i.text = ''
         self.descr_serv = ''
 
-    def apagar(self):
+    def apagar(self):  # Apagar nota do banco de dados
         lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
@@ -220,7 +225,7 @@ class Principal(Screen):
         self.dialog.open()
         self.limpar()
 
-    def buscar(self):
+    def buscar(self):  # Pesquisar com número da nota
         try:
             lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
@@ -249,12 +254,12 @@ class Principal(Screen):
             self.ids.v_liq.text = str(round(row[19], 2)).replace('.', ',')
             cnx.commit()
             cnx.close()
-        except:
+        except TypeError:
             self.dialog = MDDialog(text="Registro não encontrado!", radius=[20, 7, 20, 7], )
             self.dialog.open()
             self.limpar()
 
-    def atualizar(self):
+    def atualizar(self):  # Atualizar dados da nota fiscal no banco de dados
         try:
             lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
@@ -289,12 +294,11 @@ class Principal(Screen):
             self.limpar()
             self.inserir_notas()
 
-        except:
+        except TypeError:
             self.dialog = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
             self.dialog.open()
 
-    def inserir_notas(self):
-
+    def inserir_notas(self):  # Inserir dados da nota a ser modificada
         entradas = [self.ids.cod_id, self.ids.dt_analise, self.ids.dt_nota,
                     self.ids.dt_venc,
                     self.ids.num_nota,
@@ -337,7 +341,7 @@ class Principal(Screen):
 
         print(BancoDados.lista)
 
-    def lembrar_lancamento(self):
+    def lembrar_lancamento(self):  # Lembrar informações do último lançamento para notas de mesmo prestador
         if self.ids.lembrar.active:
             lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
@@ -374,9 +378,9 @@ class CadastroPrestador(Screen):
         else:
             pass
 
-    def pesquisar_fornecedor(self):
+    def pesquisar_prestador(self):  # Pesquisar prestador pelo CNPJ
         try:
-            lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
+            lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
             cursor = cnx.cursor()
             cursor.execute('SELECT * FROM cadastro WHERE CNPJ=?', (self.ids.cad_cnpj.text,))
@@ -388,17 +392,16 @@ class CadastroPrestador(Screen):
             self.ids.aliq_simples.text = str(row[4])
             cnx.commit()
             cnx.close()
-        except:
+        except TypeError:
             self.dialog = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
             self.dialog.open()
 
-    def cadastrar_prestador(self):
+    def cadastrar_prestador(self):  # Cadastrar novo fornecedor
         if self.ids.cad_cnpj.text == '':
             pass
-            # tkinter.messagebox.showerror('Notas fiscais de Serviço', 'Coloque todas as informações')
         else:
             try:
-                lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
+                lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
                 cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
                 cursor = cnx.cursor()
                 cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?, ?)',
@@ -410,13 +413,13 @@ class CadastroPrestador(Screen):
                 self.dialog.open()
                 self.manager.current = 'principal'
 
-            except:
+            except pyodbc.DataError:
                 self.dialog = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
                 self.dialog.open()
 
-    def atualizar_cadastro(self):
+    def atualizar_cadastro(self):  # Atualizar cadastro após busca pelo CNPJ
 
-        lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
+        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
         cursor.execute('UPDATE cadastro SET NOME=?, MUNICÍPIO=?, OPTANTE_SIMPLES=?, ALIQUOTA=? WHERE CNPJ=?',
@@ -434,11 +437,13 @@ class BancoDados(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.total_lancamento = None
         self.data_tables = None
 
-    def gerar_banco(self):
+    def gerar_banco(self):  # Gerar banco de dados para visualização
         # conectar banco de dados
-        lmdb = os.path.join(*Principal().diretorio, 'Base_notas.accdb;')
+        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
+        print(lmdb)
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
         cursor.execute('select * from notas_fiscais order by ID desc')
@@ -448,7 +453,7 @@ class BancoDados(Screen):
         lin_lancamento = []
         self.total_lancamento = []
 
-        for lin in resultado[:100]:
+        for lin in resultado[:100]:  # limitar 100 ultimos lançamentos
             for row in lin:
                 if type(row) != str and type(row) != int:
                     lin_lancamento.append(float(row))
@@ -461,8 +466,7 @@ class BancoDados(Screen):
 
         self.add_datatable()
 
-    def add_datatable(self):
-
+    def add_datatable(self):  # Adicionar tabela na tela
         self.data_tables = MDDataTable(pos_hint={'center_x': 0.5, 'center_y': 0.5},
                                        size_hint=(1, 0.8),
                                        use_pagination=True, rows_num=10,
@@ -494,7 +498,7 @@ class BancoDados(Screen):
 
         self.add_widget(self.data_tables)
 
-    def pegar_check(self):
+    def pegar_check(self):  # Selecionar notas a serem editadas
         self.lista.clear()
         for item in self.data_tables.get_row_checks():
             self.lista.append(item)
@@ -502,12 +506,16 @@ class BancoDados(Screen):
 
 class ExportarDados(Screen):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.dialog = None
+
     def exp_banco(self):
         # exportar banco completo para consultas e geração de guias de recolhimento
         book = load_workbook(
-            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção-teste.xlsx'))
+            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'))
         writer = pd.ExcelWriter(
-            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção-teste.xlsx'),
+            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'),
             engine='openpyxl')
         writer.book = book
 
@@ -521,8 +529,8 @@ class ExportarDados(Screen):
         resultado = cursor.fetchall()
         lista = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
         for i in resultado:
-            for l in range(20):
-                lista[l].append(i[l])
+            for colunas in range(20):
+                lista[colunas].append(i[colunas])
         tabela = pd.DataFrame(lista).transpose()
         tabela.columns = ['ID', 'data_analise', 'data', 'data_vencimento', 'NF', 'CNPJ', 'Fornecedor', 'cidade',
                           'simples_nacional', 'codigo_servico', 'valor_bruto', 'aliq_irrf', 'irrf', 'aliq_crf',
@@ -544,8 +552,11 @@ class ExportarDados(Screen):
 
 class Relatorios(Screen):
 
-    def relatorios(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.data_venc = None
 
+    def relatorios(self):
         # Criar planilha para gerar arquivo
         writer = pd.ExcelWriter(os.path.join(*self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
                                 engine='xlsxwriter')
@@ -555,37 +566,39 @@ class Relatorios(Screen):
         cursor = cnx.cursor()
 
         # =================== Relatório Imposto de Renda ===============================================#
-        if self.ids.check_ir.active == True:
+        if self.ids.check_ir.active:
             cursor.execute('select cnpj, fornecedor, sum(irrf) from notas_fiscais '
                            'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) <= '
                            'DateValue(?) group by cnpj, fornecedor', self.ids.dt_ini.text, self.ids.dt_fim.text)
             resultado = cursor.fetchall()
             lista = [[], [], []]
             for i in resultado:
-                for l in range(3):
-                    lista[l].append(i[l])
+                for colunas_ir in range(3):
+                    lista[colunas_ir].append(i[colunas_ir])
             tabela = pd.DataFrame(lista).transpose()
             tabela.columns = ['CNPJ', 'Fornecedor', 'IRRF']
             tabela.to_excel(writer, sheet_name='Irrf', index=False)
 
         # =========================== Relatório de Contribuições =========================================#
-        if self.ids.check_crf.active == True:
+        if self.ids.check_crf.active:
             cursor.execute('select * from notas_fiscais where data_vencimento <> 0 (select data_vencimento, '
                            'cnpj, fornecedor, sum(crf) from notas_fiscais '
-                           'where DateValue(data_vencimento) >= DateValue(?) and DateValue(data_vencimento) <= DateValue(?) '
+                           'where DateValue(data_vencimento) >= DateValue(?) and DateValue(data_vencimento) <= '
+                           'DateValue(?) '
                            'group by data_vencimento, cnpj, fornecedor order by fornecedor, data_vencimento)',
                            (self.ids.dt_ini.text, self.ids.dt_fim.text))
             resultado = cursor.fetchall()
             lista2 = [[], [], [], []]
             for i in resultado:
-                for l in range(4):
-                    lista2[l].append(i[l])
+                for colunas_crf in range(4):
+                    lista2[colunas_crf].append(i[colunas_crf])
             tabela2 = pd.DataFrame(lista2).transpose()
             tabela2.columns = ['Data_Vencimento', 'CNPJ', 'Fornecedor', 'CRF']
             tabela2.to_excel(writer, sheet_name='Crf', index=False)
 
         # ===========================Relatório ISS ==========================================================#
-        if self.ids.check_iss.active == True:
+        # Gerar relatório do ISS por prefeituras em pdf
+        if self.ids.check_iss.active:
             dados_responsavel = Principal().responsavel.copy()
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
             cursor = cnx.cursor()
@@ -600,7 +613,8 @@ class Relatorios(Screen):
 
             for i in lista:
                 cursor.execute('select NF, fornecedor, iss from notas_fiscais '
-                               'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) <= DateValue(?)'
+                               'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) <= '
+                               'DateValue(?) '
                                'and cidade = ? order by cidade, cnpj', (self.ids.dt_ini.text, self.ids.dt_fim.text, i))
 
                 vencimentos = pd.read_excel(os.path.join(*Principal().diretorio, 'Programa Planilha de retenção.xlsx'),
@@ -612,12 +626,10 @@ class Relatorios(Screen):
                         data = datetime.strptime(self.ids.dt_fim.text, '%d/%m/%Y')
                         data = data + relativedelta(months=1)
                         data = data.strftime('%m/%Y')
-                        data_venc = dia + '/' + data
+                        self.data_venc = dia + '/' + data
 
                 pdf = FPDF(orientation='P', unit='mm', format='A4')
                 pdf.add_page()
-                pdf_w = 210
-                pdf_h = 297
                 pdf.set_font('Arial', 'B', 10)
                 pdf.image('logo.png', x=10.0, y=10.0,
                           h=50.0, w=100.0)
@@ -628,7 +640,7 @@ class Relatorios(Screen):
                 pdf.multi_cell(w=150, h=5,
                                txt='Planilha contendo valores a recolher referente ao mês ' + self.ids.dt_fim.text[3:])
                 pdf.multi_cell(w=125, h=5, txt='Valor a recolher através de BOLETO ANEXO - Contas a Pagar.')
-                pdf.multi_cell(w=125, h=5, txt='Vencimento: ' + data_venc)
+                pdf.multi_cell(w=125, h=5, txt='Vencimento: ' + self.data_venc)
                 pdf.set_xy(10.0, pdf.get_y() + 15)
                 pdf.multi_cell(w=30, h=5, txt='Nota Fiscal', border=1, align='C')
                 pdf.set_xy(40.0, pdf.get_y() - 5)
@@ -649,7 +661,7 @@ class Relatorios(Screen):
                     pdf.set_xy(120.0, pdf.get_y() - 5)
                     pdf.multi_cell(w=40, h=5, txt=str(lin[2]), border=1, align='C')
                     cont += 1
-                for l in range(20 - cont):
+                for colunas_ir in range(20 - cont):
                     pdf.multi_cell(w=30, h=5, txt='', border=1)
                     pdf.set_xy(40.0, pdf.get_y() - 5)
                     pdf.multi_cell(w=80, h=5, txt='', border=1)
@@ -670,7 +682,7 @@ class Relatorios(Screen):
                 pdf.output(os.path.join(*Principal().diretorio, nome_arquivo), 'F')
 
         # ===========================Relatório INSS==========================================================#
-        if self.ids.check_inss.active == True:
+        if self.ids.check_inss.active:
             cursor.execute('select data, NF, cnpj, fornecedor, valor_bruto, inss from notas_fiscais '
                            'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) '
                            '<= DateValue(?)',
@@ -678,8 +690,8 @@ class Relatorios(Screen):
             resultado = cursor.fetchall()
             lista4 = [[], [], [], [], [], []]
             for i in resultado:
-                for l in range(6):
-                    lista4[l].append(i[l])
+                for colunas_ir in range(6):
+                    lista4[colunas_ir].append(i[colunas_ir])
             tabela4 = pd.DataFrame(lista4).transpose()
             tabela4.columns = ['Data Nota Fiscal', 'Nº NF', 'CNPJ', 'Fornecedor', 'Valor Bruto', 'INSS']
             tabela4.to_excel(writer, sheet_name='INSS', index=False)
@@ -696,7 +708,6 @@ class WindowManager(ScreenManager):
 class NotasFiscais(MDApp):
 
     def build(self):
-        Window.clearcolor = (1, 1, 1, 1)
         return Builder.load_file('servicos.kv')
 
 
