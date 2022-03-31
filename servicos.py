@@ -41,7 +41,7 @@ class Principal(Screen):
         else:
             pass
 
-    def busca_cadastro(self):  # Buscar dados com o CNPJ fornecido de Nome, Situação Tributária
+    def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
             try:
                 lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
@@ -87,17 +87,16 @@ class Principal(Screen):
                     cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
                     busca = cursor.fetchone()
                     aliq.text = str(round(busca[0], 2)).replace('.', ',')
-                if self.ids.inss_reduzido.active is True:  # Empresa com desoneração a aliquota é 3,5%
-                    self.ids.aliq_inss.text = '3,5'
-
                 else:
-                    if imp == 'iss':  # Buscar alíquota do Simples do prestador
+                    if imp == 'iss' and self.ids.mun_iss.text != '':  # Buscar alíquota do Simples do prestador
                         try:
                             cursor.execute(f'select ALIQUOTA from cadastro where CNPJ = ?', (self.ids.num_cnpj.text,))
                             busca = cursor.fetchone()
                             aliq.text = str(round(busca[0], 2)).replace('.', ',')
                         except TypeError:
                             aliq.text = '0'
+                    else:
+                        aliq.text = '0'
 
         if self.ids.regime_trib.text not in 'Simplessimples':  # Não sendo simples, buscar aliquota da prefeitura do cad
             try:
@@ -113,6 +112,12 @@ class Principal(Screen):
             self.descr_serv = busca2[0][0:190]
         except TypeError:
             pass
+
+    def aliq_desoneracao(self):  # Empresa com desoneração a aliquota de INSS é 3,5%
+        if self.ids.inss_reduzido.active is True:
+            self.ids.aliq_inss.text = '3,5'
+        else:
+            self.ids.aliq_inss.text = '0'
 
     def calcula_imposto(self, instance, aliquota):  # calcular impostos com o valor bruto fornecido e aliquotas
         if aliquota.text != '':
@@ -368,7 +373,7 @@ class CadastroPrestador(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.dialog = None
+        self.dialog_cad = None
 
     def mascara_cad(self):  # função para formatar CNPJ
         mask = self.ids.cad_cnpj.text
@@ -393,10 +398,10 @@ class CadastroPrestador(Screen):
             cnx.commit()
             cnx.close()
         except TypeError:
-            self.dialog = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
-            self.dialog.open()
+            self.dialog_cad = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
+            self.dialog_cad.open()
 
-    def cadastrar_prestador(self):  # Cadastrar novo fornecedor
+    def cadastrar_prestador(self):  # Cadastrar novo prestador
         if self.ids.cad_cnpj.text == '':
             pass
         else:
@@ -409,13 +414,13 @@ class CadastroPrestador(Screen):
                                 self.ids.cad_mun.text, self.ids.cad_regime.text, self.ids.aliq_simples.text))
                 cnx.commit()
                 cnx.close()
-                self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
-                self.dialog.open()
+                self.dialog_cad = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
+                self.dialog_cad.open()
                 self.manager.current = 'principal'
 
             except pyodbc.DataError:
-                self.dialog = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
-                self.dialog.open()
+                self.dialog_cad = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
+                self.dialog_cad.open()
 
     def atualizar_cadastro(self):  # Atualizar cadastro após busca pelo CNPJ
 
@@ -430,6 +435,8 @@ class CadastroPrestador(Screen):
                         self.ids.cad_cnpj.text))
         cnx.commit()
         cnx.close()
+        self.dialog_cad = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
+        self.dialog_cad.open()
 
 
 class BancoDados(Screen):
