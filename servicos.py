@@ -87,6 +87,7 @@ class Principal(Screen):
                     cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
                     busca = cursor.fetchone()
                     aliq.text = str(round(busca[0], 2)).replace('.', ',')
+
                 else:
                     if imp == 'iss' and self.ids.mun_iss.text != '':  # Buscar alíquota do Simples do prestador
                         try:
@@ -450,7 +451,6 @@ class BancoDados(Screen):
     def gerar_banco(self):  # Gerar banco de dados para visualização
         # conectar banco de dados
         lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
-        print(lmdb)
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
         cursor.execute('select * from notas_fiscais order by ID desc')
@@ -460,7 +460,7 @@ class BancoDados(Screen):
         lin_lancamento = []
         self.total_lancamento = []
 
-        for lin in resultado[:100]:  # limitar 100 ultimos lançamentos
+        for lin in resultado[:int(self.ids.num_ocor.text)]:  # limitar ultimos lançamentos
             for row in lin:
                 if type(row) != str and type(row) != int:
                     lin_lancamento.append(float(row))
@@ -606,6 +606,9 @@ class Relatorios(Screen):
         # ===========================Relatório ISS ==========================================================#
         # Gerar relatório do ISS por prefeituras em pdf
         if self.ids.check_iss.active:
+            # Criar diretório para salvar arquivos pdf
+            dir_pdfs = 'ISS_' + self.ids.dt_fim.text[3:].replace('/', '-')
+            os.mkdir(os.path.join(*self.manager.get_screen('principal').diretorio, dir_pdfs))
             dados_responsavel = Principal().responsavel.copy()
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
             cursor = cnx.cursor()
@@ -686,7 +689,7 @@ class Relatorios(Screen):
                 pdf.multi_cell(w=40, h=5, txt='GECOT')
                 data = self.ids.dt_fim.text[3:].replace('/', '-')
                 nome_arquivo = i + ' ' + data + '.pdf'
-                pdf.output(os.path.join(*Principal().diretorio, nome_arquivo), 'F')
+                pdf.output(os.path.join(*self.manager.get_screen('principal').diretorio, dir_pdfs, nome_arquivo), 'F')
 
         # ===========================Relatório INSS==========================================================#
         if self.ids.check_inss.active:

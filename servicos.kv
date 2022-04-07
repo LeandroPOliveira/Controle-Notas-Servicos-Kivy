@@ -193,15 +193,14 @@ Screen:
             pos_hint: {'x': .53, 'y': .45}
             hint_text: "Excluir Mat/Equipo"
             helper_text: 'Em porcentagem ou valor'
-
+            on_focus:
+                root.busca_servico()
 
         MDTextField:
             id: v_bruto
             #size_hint: (.15, .09)
             pos_hint: {'x': .725, 'y': .35}
             hint_text: "Valor Bruto"
-            on_focus:
-                root.busca_servico()
 
         MDTextField:
             id: aliq_ir
@@ -283,7 +282,7 @@ Screen:
             #size: "48dp", "48dp"
             pos_hint: {'x': .51, 'y': .37}
             on_active:
-                root.aliq_desonaracao()
+                root.aliq_desoneracao()
 
         MDLabel:
             text: 'Desoneração folha (3,5%)'
@@ -422,6 +421,13 @@ Screen:
             root.pegar_check()
             root.manager.current = "principal"
 
+    MDTextField:
+        id: num_ocor
+        pos_hint: {'x': .85, 'y': .02}
+        hint_text: "Num. Max. Ocorrências"
+        text: '100'
+        on_text_validate:
+            root.gerar_banco()
 
 <ExportarDados>:
 
