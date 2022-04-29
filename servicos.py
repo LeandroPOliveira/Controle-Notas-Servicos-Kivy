@@ -25,6 +25,12 @@ class Principal(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog_atu = None
+        self.dialog_add = None
+        self.dialog_not = None
+        self.dialog_err = None
+        self.dialog_apg = None
+        self.dialog_obs = None
         self.cnx = None
         with open('dados.txt', 'r', encoding='utf-8') as bd:  # Caminho da pasta no servidor com o banco de dados
             dados = bd.readlines()
@@ -156,11 +162,11 @@ class Principal(Screen):
 
     def adicionar(self):  # Adicionar nota fiscal lançada
         if self.ids.num_cnpj.text == '':
-            self.dialog = MDDialog(
+            self.dialog_obs = MDDialog(
                 text="Insira todas as informações!",
                 radius=[20, 7, 20, 7], )
 
-            self.dialog.open()
+            self.dialog_obs.open()
         else:
             lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
@@ -193,8 +199,8 @@ class Principal(Screen):
             cnx.commit()
             cnx.close()
 
-            self.dialog = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
-            self.dialog.open()
+            self.dialog_add = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
+            self.dialog_add.open()
 
     def limpar(self):  # Limpar os campos
         entradas = [self.ids.dt_analise, self.ids.dt_nota,
@@ -227,8 +233,8 @@ class Principal(Screen):
         cursor.execute('DELETE FROM notas_fiscais WHERE ID=?', (self.ids.cod_id.text,))
         cnx.commit()
         cnx.close()
-        self.dialog = MDDialog(text="Registro apagado com sucesso!", radius=[20, 7, 20, 7], )
-        self.dialog.open()
+        self.dialog_apg = MDDialog(text="Registro apagado com sucesso!", radius=[20, 7, 20, 7], )
+        self.dialog_apg.open()
         self.limpar()
 
     def buscar(self):  # Pesquisar com número da nota
@@ -261,8 +267,8 @@ class Principal(Screen):
             cnx.commit()
             cnx.close()
         except TypeError:
-            self.dialog = MDDialog(text="Registro não encontrado!", radius=[20, 7, 20, 7], )
-            self.dialog.open()
+            self.dialog_not = MDDialog(text="Registro não encontrado!", radius=[20, 7, 20, 7], )
+            self.dialog_not.open()
             self.limpar()
 
     def atualizar(self):  # Atualizar dados da nota fiscal no banco de dados
@@ -295,14 +301,14 @@ class Principal(Screen):
                                                                                               self.ids.cod_id.text))
             cnx.commit()
             cnx.close()
-            self.dialog = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
-            self.dialog.open()
+            self.dialog_atu = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
+            self.dialog_atu.open()
             self.limpar()
             self.inserir_notas()
 
         except TypeError:
-            self.dialog = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
-            self.dialog.open()
+            self.dialog_err = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
+            self.dialog_err.open()
 
     def inserir_notas(self):  # Inserir dados da nota a ser modificada
         entradas = [self.ids.cod_id, self.ids.dt_analise, self.ids.dt_nota,
@@ -374,6 +380,8 @@ class CadastroPrestador(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog_cad_err = None
+        self.dialog_cad_const = None
         self.dialog_cad = None
 
     def mascara_cad(self):  # função para formatar CNPJ
@@ -417,11 +425,16 @@ class CadastroPrestador(Screen):
                 cnx.close()
                 self.dialog_cad = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
                 self.dialog_cad.open()
+                self.ids.cad_cnpj.text = ''
+                self.ids.cad_nome.text = ''
+                self.ids.cad_mun.text = ''
+                self.ids.cad_regime.text = ''
+                self.ids.aliq_simples.text = ''
                 self.manager.current = 'principal'
 
             except pyodbc.DataError:
-                self.dialog_cad = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
-                self.dialog_cad.open()
+                self.dialog_cad_err = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
+                self.dialog_cad_err.open()
 
     def atualizar_cadastro(self):  # Atualizar cadastro após busca pelo CNPJ
 
@@ -436,8 +449,8 @@ class CadastroPrestador(Screen):
                         self.ids.cad_cnpj.text))
         cnx.commit()
         cnx.close()
-        self.dialog_cad = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
-        self.dialog_cad.open()
+        self.dialog_cad_const = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
+        self.dialog_cad_const.open()
 
 
 class BancoDados(Screen):
@@ -515,6 +528,7 @@ class ExportarDados(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog_exp = None
         self.dialog = None
 
     def exp_banco(self):
@@ -553,8 +567,8 @@ class ExportarDados(Screen):
         frame.to_excel(writer, sheet_name='Geral', index=False)
 
         writer.save()
-        self.dialog = MDDialog(text="Banco exportado com sucesso!", radius=[20, 7, 20, 7], )
-        self.dialog.open()
+        self.dialog_exp = MDDialog(text="Banco exportado com sucesso!", radius=[20, 7, 20, 7], )
+        self.dialog_exp.open()
 
 
 class Relatorios(Screen):
