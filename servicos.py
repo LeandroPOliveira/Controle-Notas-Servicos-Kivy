@@ -195,6 +195,7 @@ class Principal(Screen):
                                  self.ids.iss.text,
                                  self.ids.v_liq.text))
             self.ids.lembrar.active = False
+            self.ids.inss_reduzido.active = False
             self.limpar()
             cnx.commit()
             cnx.close()
@@ -449,7 +450,7 @@ class CadastroPrestador(Screen):
                         self.ids.cad_cnpj.text))
         cnx.commit()
         cnx.close()
-        self.dialog_cad_const = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
+        self.dialog_cad_const = MDDialog(text="Cadastro alterado com sucesso!", radius=[20, 7, 20, 7], )
         self.dialog_cad_const.open()
 
 
