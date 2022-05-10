@@ -452,6 +452,11 @@ class CadastroPrestador(Screen):
         cnx.close()
         self.dialog_cad_const = MDDialog(text="Cadastro alterado com sucesso!", radius=[20, 7, 20, 7], )
         self.dialog_cad_const.open()
+        self.ids.cad_cnpj.text = ''
+        self.ids.cad_nome.text = ''
+        self.ids.cad_mun.text = ''
+        self.ids.cad_regime.text = ''
+        self.ids.aliq_simples.text = ''
 
 
 class BancoDados(Screen):
