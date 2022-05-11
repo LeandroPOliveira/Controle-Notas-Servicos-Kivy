@@ -1,4 +1,4 @@
-Controle Notas Fiscais de Servico Tkinter
+# Controle Notas Fiscais de Servico - Kivy
 
 Objetivos
 
