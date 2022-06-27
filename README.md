@@ -9,3 +9,9 @@ Visando poupar retrabalhos por parte da equipe contábil, este programa tem obje
 Criar uma tabela auxiliar com os códigos de serviços e suas respectivas retenções, a fim de auxiliar o analista em seus trabalhos;
 Criar um cadastro de fornecedores, utilizando auto-preenchimento no caso de multiplas notas do mesmo emissor;
 Para fins de ISS, criar uma tabela com as principais prefeituras e serviços utilizados com retenção, facilitando consultas e eventuais erros de aliquotas na emissão das notas.
+
+Tela Principal:
+![alt text](https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/tela_inicio.png?raw=true)
+
+Tela Consultas:
+![alt text](https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/tela_tabela.png?raw=true)
