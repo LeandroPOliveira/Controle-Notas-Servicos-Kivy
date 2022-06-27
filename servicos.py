@@ -25,6 +25,7 @@ class Principal(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog_busca_serv = None
         self.dialog_atu = None
         self.dialog_add = None
         self.dialog_not = None
@@ -92,7 +93,13 @@ class Principal(Screen):
                 if self.ids.regime_trib.text in 'nãoNÃOnaoNAONãoNormalnormal':  # Caso não seja Simples Nacional
                     cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
                     busca = cursor.fetchone()
-                    aliq.text = str(round(busca[0], 2)).replace('.', ',')
+                    if busca is not None:
+                        aliq.text = str(round(busca[0], 2)).replace('.', ',')
+                    else:
+                        self.dialog_busca_serv = MDDialog(text="Código de Serviço não encontrado!",
+                                                          radius=[20, 7, 20, 7], )
+                        self.dialog_busca_serv.open()
+                        break
 
                 else:
                     if imp == 'iss' and self.ids.mun_iss.text != '':  # Buscar alíquota do Simples do prestador
@@ -113,6 +120,8 @@ class Principal(Screen):
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
             except TypeError:
                 pass
+        else:
+            self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text = '0', '0', '0', '0'
         try:
             cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
             busca2 = cursor.fetchone()
@@ -337,7 +346,7 @@ class Principal(Screen):
             BancoDados.lista = BancoDados.lista[0]
 
             for index, entrada in enumerate(entradas):
-                for lista in BancoDados.lista:
+                for _ in BancoDados.lista:
                     if index < 10:
                         entrada.text = str(BancoDados.lista[index])
                     else:
@@ -345,7 +354,7 @@ class Principal(Screen):
             BancoDados.lista.clear()
         else:
             for index, entrada in enumerate(entradas):
-                for lista in BancoDados.lista[0]:
+                for _ in BancoDados.lista[0]:
                     if index < 10:
                         entrada.text = str(BancoDados.lista[0][index])
                     else:
