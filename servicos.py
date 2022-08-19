@@ -1,3 +1,5 @@
+import re
+
 from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
@@ -25,6 +27,7 @@ class Principal(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog_data = None
         self.dialog_busca_serv = None
         self.dialog_atu = None
         self.dialog_add = None
@@ -47,6 +50,22 @@ class Principal(Screen):
             self.ids.num_cnpj.text = mask_cnpj
         else:
             pass
+
+    def valida_data(self):
+        datas = [self.ids.dt_analise.text, self.ids.dt_nota.text, self.ids.dt_venc.text]
+        padrao = '\\d{2}/\\d{2}/\\d{4}'
+        incorretos = []
+        for dt in datas:
+            print(dt)
+            validar = re.findall(padrao, dt)
+
+            if len(validar) < 1:
+                incorretos.append(dt)
+
+        if len(incorretos) > 0:
+            self.dialog_data = MDDialog(text=f"Data no formato incorreto no(s) campo(s) {incorretos}",
+                                        radius=[20, 7, 20, 7],)
+            self.dialog_data.open()
 
     def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
@@ -120,8 +139,8 @@ class Principal(Screen):
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
             except TypeError:
                 pass
-        else:
-            self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text = '0', '0', '0', '0'
+        #else:
+         #   self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text = '0', '0', '0', '0'
         try:
             cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
             busca2 = cursor.fetchone()
@@ -136,7 +155,7 @@ class Principal(Screen):
             self.ids.aliq_inss.text = '0'
 
     def calcula_imposto(self, instance, aliquota):  # calcular impostos com o valor bruto fornecido e aliquotas
-        if aliquota.text != '':
+        if aliquota.text != '' and self.ids.v_bruto.text != '':
             tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
             instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
         if aliquota.text == '11,00' or aliquota.text == '3,5':  # Construção civil

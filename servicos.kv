@@ -146,6 +146,8 @@ Screen:
             id: num_nota
             pos_hint: {'x': .55, 'y': .85}
             hint_text: "Número da Nota"
+            on_focus:
+                root.valida_data()
 
         MDTextField:
             id: num_cnpj
