@@ -36,12 +36,15 @@ class Principal(Screen):
         self.dialog_apg = None
         self.dialog_obs = None
         self.cnx = None
+        # self.diretorio = os.path.join(os.path.abspath(os.getcwd()), self.base_dados)
+        self.base_dados = 'Base_notas.accdb;'
         with open('dados.txt', 'r', encoding='utf-8') as bd:  # Caminho da pasta no servidor com o banco de dados
             dados = bd.readlines()
             self.diretorio = dados[0]
             self.diretorio = self.diretorio.rstrip().split('\\')
             self.responsavel = dados[1].split('; ')
             self.dialog = None
+        # self.diretorio = os.path.join(*self.diretorio, self.base_dados)
 
     def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
@@ -70,8 +73,8 @@ class Principal(Screen):
     def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
             try:
-                lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-                self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+                self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                          os.path.join(*self.diretorio, self.base_dados))
                 cursor = self.cnx.cursor()
                 cursor.execute('select nome from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
                 busca_nome = cursor.fetchone()
@@ -101,8 +104,8 @@ class Principal(Screen):
         self.dialog.dismiss()
 
     def busca_servico(self):  # Buscar no cadastro as aliquotas segundo o código de serviço utilizado
-        lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                  os.path.join(*self.diretorio, self.base_dados))
         cursor = self.cnx.cursor()
         if self.ids.cod_serv.text != '':
             self.ids.cod_serv.text = self.ids.cod_serv.text.lstrip('0')
@@ -176,11 +179,14 @@ class Principal(Screen):
                 '.', ',')
 
     def valor_liq(self):  # Calcular valor líquido a pagar
-        self.ids.v_liq.text = str(round(float(self.ids.v_bruto.text.replace(',', '.')) -
+        try:
+            self.ids.v_liq.text = str(round(float(self.ids.v_bruto.text.replace(',', '.')) -
                                         (sum([float(self.ids.irrf.text.replace(',', '.')),
                                               float(self.ids.crf.text.replace(',', '.')),
                                               float(self.ids.inss.text.replace(',', '.')),
                                               float(self.ids.iss.text.replace(',', '.'))])), 2)).replace('.', ',')
+        except ValueError:
+            pass
 
     def data_dia(self):  # Trazer atual para o campo data da análise
         if self.ids.dt_nota.text == '':
@@ -196,9 +202,9 @@ class Principal(Screen):
 
             self.dialog_obs.open()
         else:
-            lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-            cursor = cnx.cursor()
+            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                      os.path.join(*self.diretorio, self.base_dados))
+            cursor = self.cnx.cursor()
             cursor.execute(
                 'INSERT INTO notas_fiscais (data_analise, data, data_vencimento, NF,	CNPJ, Fornecedor, cidade,'
                 'simples_nacional, codigo_servico, valor_bruto, aliq_irrf, irrf,	aliq_crf, crf, aliq_inss, '
@@ -225,8 +231,8 @@ class Principal(Screen):
             self.ids.lembrar.active = False
             self.ids.inss_reduzido.active = False
             self.limpar()
-            cnx.commit()
-            cnx.close()
+            self.cnx.commit()
+            self.cnx.close()
 
             self.dialog_add = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog_add.open()
@@ -256,21 +262,21 @@ class Principal(Screen):
         self.descr_serv = ''
 
     def apagar(self):  # Apagar nota do banco de dados
-        lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-        cursor = cnx.cursor()
+        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                  os.path.join(*self.diretorio, self.base_dados))
+        cursor = self.cnx.cursor()
         cursor.execute('DELETE FROM notas_fiscais WHERE ID=?', (self.ids.cod_id.text,))
-        cnx.commit()
-        cnx.close()
+        self.cnx.commit()
+        self.cnx.close()
         self.dialog_apg = MDDialog(text="Registro apagado com sucesso!", radius=[20, 7, 20, 7], )
         self.dialog_apg.open()
         self.limpar()
 
     def buscar(self):  # Pesquisar com número da nota
         try:
-            lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-            cursor = cnx.cursor()
+            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                      os.path.join(*self.diretorio, self.base_dados))
+            cursor = self.cnx.cursor()
             cursor.execute('select * FROM notas_fiscais WHERE NF=?', (self.ids.num_nota.text,))
             row = cursor.fetchone()
             self.ids.cod_id.text = str(row[0])
@@ -293,8 +299,8 @@ class Principal(Screen):
             self.ids.aliq_iss.text = str(round(row[17], 2)).replace('.', ',')
             self.ids.iss.text = str(round(row[18], 2)).replace('.', ',')
             self.ids.v_liq.text = str(round(row[19], 2)).replace('.', ',')
-            cnx.commit()
-            cnx.close()
+            self.cnx.commit()
+            self.cnx.close()
         except TypeError:
             self.dialog_not = MDDialog(text="Registro não encontrado!", radius=[20, 7, 20, 7], )
             self.dialog_not.open()
@@ -302,9 +308,9 @@ class Principal(Screen):
 
     def atualizar(self):  # Atualizar dados da nota fiscal no banco de dados
         try:
-            lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-            cursor = cnx.cursor()
+            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                      os.path.join(*self.diretorio, self.base_dados))
+            cursor = self.cnx.cursor()
             cursor.execute(
                 'update notas_fiscais set DATA_ANALISE=?, DATA=?, DATA_VENCIMENTO=?, NF=?, CNPJ=?, FORNECEDOR=?, '
                 'CIDADE=?, SIMPLES_NACIONAL=?, CODIGO_SERVICO=?, VALOR_BRUTO=?, ALIQ_IRRF=?, IRRF=?, ALIQ_CRF=?, '
@@ -328,8 +334,8 @@ class Principal(Screen):
                                                                                               self.ids.iss.text,
                                                                                               self.ids.v_liq.text,
                                                                                               self.ids.cod_id.text))
-            cnx.commit()
-            cnx.close()
+            self.cnx.commit()
+            self.cnx.close()
             self.dialog_atu = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog_atu.open()
             self.limpar()
@@ -384,9 +390,9 @@ class Principal(Screen):
 
     def lembrar_lancamento(self):  # Lembrar informações do último lançamento para notas de mesmo prestador
         if self.ids.lembrar.active:
-            lmdb = os.path.join(*self.diretorio, 'Base_notas.accdb;')
-            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-            cursor = cnx.cursor()
+            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                      os.path.join(*self.diretorio, self.base_dados))
+            cursor = self.cnx.cursor()
             cursor.execute('SELECT TOP 1 data_analise, data, data_vencimento, nf, cnpj, fornecedor, simples_nacional,'
                            'codigo_servico from notas_fiscais order by id desc')
             row = cursor.fetchone()
@@ -398,7 +404,7 @@ class Principal(Screen):
             self.ids.cod_fornec.text = row[5]
             self.ids.regime_trib.text = row[6]
             self.ids.cod_serv.text = row[7]
-            cnx.commit()
+            self.cnx.commit()
 
         else:
             self.limpar()
@@ -492,18 +498,21 @@ class BancoDados(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.cnx = None
         self.total_lancamento = None
         self.data_tables = None
 
     def gerar_banco(self):  # Gerar banco de dados para visualização
         # conectar banco de dados
-        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
-        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-        cursor = cnx.cursor()
+        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                  os.path.join(*self.manager.get_screen('principal').diretorio,
+                                               self.manager.get_screen('principal').base_dados))
+
+        cursor = self.cnx.cursor()
         cursor.execute('select * from notas_fiscais order by ID desc')
         resultado = cursor.fetchall()
-        cnx.commit()
-        cnx.close()
+        self.cnx.commit()
+        self.cnx.close()
         lin_lancamento = []
         self.total_lancamento = []
 
@@ -577,9 +586,10 @@ class ExportarDados(Screen):
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
 
         # Conectar ao banco
-        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
-        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-        cursor = cnx.cursor()
+        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                  os.path.join(*self.manager.get_screen('principal').diretorio,
+                                               self.manager.get_screen('principal').base_dados))
+        cursor = self.cnx.cursor()
         cursor.execute('select * from notas_fiscais')
         resultado = cursor.fetchall()
         lista = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
@@ -616,9 +626,10 @@ class Relatorios(Screen):
         writer = pd.ExcelWriter(os.path.join(*self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
                                 engine='xlsxwriter')
         # Conectar ao banco
-        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
-        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-        cursor = cnx.cursor()
+        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                  os.path.join(*self.manager.get_screen('principal').diretorio,
+                                               self.manager.get_screen('principal').base_dados))
+        cursor = self.cnx.cursor()
 
         # =================== Relatório Imposto de Renda ===============================================#
         if self.ids.check_ir.active:
@@ -658,8 +669,10 @@ class Relatorios(Screen):
             dir_pdfs = 'ISS_' + self.ids.dt_fim.text[3:].replace('/', '-')
             os.mkdir(os.path.join(*self.manager.get_screen('principal').diretorio, dir_pdfs))
             dados_responsavel = Principal().responsavel.copy()
-            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
-            cursor = cnx.cursor()
+            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
+                                      os.path.join(*self.manager.get_screen('principal').diretorio,
+                                                   self.manager.get_screen('principal').base_dados))
+            cursor = self.cnx.cursor()
 
             cursor.execute('select distinct cidade from notas_fiscais where DateValue(data_analise) >= '
                            'DateValue(?) and DateValue(data_analise) <= DateValue(?)',
