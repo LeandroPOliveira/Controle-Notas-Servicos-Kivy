@@ -27,6 +27,7 @@ class Principal(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog = None
         self.dialog_data = None
         self.dialog_busca_serv = None
         self.dialog_atu = None
@@ -36,15 +37,14 @@ class Principal(Screen):
         self.dialog_apg = None
         self.dialog_obs = None
         self.cnx = None
-        # self.diretorio = os.path.join(os.path.abspath(os.getcwd()), self.base_dados)
         self.base_dados = 'Base_notas.accdb;'
+        # self.base_dados = 'base_notas - exemplo.accdb;'
         with open('dados.txt', 'r', encoding='utf-8') as bd:  # Caminho da pasta no servidor com o banco de dados
             dados = bd.readlines()
-            self.diretorio = dados[0]
-            self.diretorio = self.diretorio.rstrip().split('\\')
+            self.diretorio = dados[0].strip()
             self.responsavel = dados[1].split('; ')
-            self.dialog = None
-        # self.diretorio = os.path.join(*self.diretorio, self.base_dados)
+        # self.responsavel = ['Fulano de Tal', 'Contador Junior']
+        # self.diretorio = os.path.abspath(os.getcwd())
 
     def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
@@ -74,7 +74,7 @@ class Principal(Screen):
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
             try:
                 self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                          os.path.join(*self.diretorio, self.base_dados))
+                                          os.path.join(self.diretorio, self.base_dados))
                 cursor = self.cnx.cursor()
                 cursor.execute('select nome from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
                 busca_nome = cursor.fetchone()
@@ -105,7 +105,7 @@ class Principal(Screen):
 
     def busca_servico(self):  # Buscar no cadastro as aliquotas segundo o código de serviço utilizado
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(*self.diretorio, self.base_dados))
+                                  os.path.join(self.diretorio, self.base_dados))
         cursor = self.cnx.cursor()
         if self.ids.cod_serv.text != '':
             self.ids.cod_serv.text = self.ids.cod_serv.text.lstrip('0')
@@ -203,7 +203,7 @@ class Principal(Screen):
             self.dialog_obs.open()
         else:
             self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(*self.diretorio, self.base_dados))
+                                      os.path.join(self.diretorio, self.base_dados))
             cursor = self.cnx.cursor()
             cursor.execute(
                 'INSERT INTO notas_fiscais (data_analise, data, data_vencimento, NF,	CNPJ, Fornecedor, cidade,'
@@ -263,7 +263,7 @@ class Principal(Screen):
 
     def apagar(self):  # Apagar nota do banco de dados
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(*self.diretorio, self.base_dados))
+                                  os.path.join(self.diretorio, self.base_dados))
         cursor = self.cnx.cursor()
         cursor.execute('DELETE FROM notas_fiscais WHERE ID=?', (self.ids.cod_id.text,))
         self.cnx.commit()
@@ -275,7 +275,7 @@ class Principal(Screen):
     def buscar(self):  # Pesquisar com número da nota
         try:
             self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(*self.diretorio, self.base_dados))
+                                      os.path.join(self.diretorio, self.base_dados))
             cursor = self.cnx.cursor()
             cursor.execute('select * FROM notas_fiscais WHERE NF=?', (self.ids.num_nota.text,))
             row = cursor.fetchone()
@@ -309,7 +309,7 @@ class Principal(Screen):
     def atualizar(self):  # Atualizar dados da nota fiscal no banco de dados
         try:
             self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(*self.diretorio, self.base_dados))
+                                      os.path.join(self.diretorio, self.base_dados))
             cursor = self.cnx.cursor()
             cursor.execute(
                 'update notas_fiscais set DATA_ANALISE=?, DATA=?, DATA_VENCIMENTO=?, NF=?, CNPJ=?, FORNECEDOR=?, '
@@ -391,7 +391,7 @@ class Principal(Screen):
     def lembrar_lancamento(self):  # Lembrar informações do último lançamento para notas de mesmo prestador
         if self.ids.lembrar.active:
             self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(*self.diretorio, self.base_dados))
+                                      os.path.join(self.diretorio, self.base_dados))
             cursor = self.cnx.cursor()
             cursor.execute('SELECT TOP 1 data_analise, data, data_vencimento, nf, cnpj, fornecedor, simples_nacional,'
                            'codigo_servico from notas_fiscais order by id desc')
@@ -429,7 +429,8 @@ class CadastroPrestador(Screen):
 
     def pesquisar_prestador(self):  # Pesquisar prestador pelo CNPJ
         try:
-            lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
+            lmdb = os.path.join(self.manager.get_screen('principal').diretorio,
+                                self.manager.get_screen('principal').base_dados)
             cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
             cursor = cnx.cursor()
             cursor.execute('SELECT * FROM cadastro WHERE CNPJ=?', (self.ids.cad_cnpj.text,))
@@ -450,7 +451,8 @@ class CadastroPrestador(Screen):
             pass
         else:
             try:
-                lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
+                lmdb = os.path.join(self.manager.get_screen('principal').diretorio,
+                                    self.manager.get_screen('principal').base_dados)
                 cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
                 cursor = cnx.cursor()
                 cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?, ?)',
@@ -473,7 +475,8 @@ class CadastroPrestador(Screen):
 
     def atualizar_cadastro(self):  # Atualizar cadastro após busca pelo CNPJ
 
-        lmdb = os.path.join(*self.manager.get_screen('principal').diretorio, 'Base_notas.accdb;')
+        lmdb = os.path.join(self.manager.get_screen('principal').diretorio,
+                            self.manager.get_screen('principal').base_dados)
         cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
         cursor = cnx.cursor()
         cursor.execute('UPDATE cadastro SET NOME=?, MUNICÍPIO=?, OPTANTE_SIMPLES=?, ALIQUOTA=? WHERE CNPJ=?',
@@ -505,7 +508,7 @@ class BancoDados(Screen):
     def gerar_banco(self):  # Gerar banco de dados para visualização
         # conectar banco de dados
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(*self.manager.get_screen('principal').diretorio,
+                                  os.path.join(self.manager.get_screen('principal').diretorio,
                                                self.manager.get_screen('principal').base_dados))
 
         cursor = self.cnx.cursor()
@@ -577,9 +580,9 @@ class ExportarDados(Screen):
     def exp_banco(self):
         # exportar banco completo para consultas e geração de guias de recolhimento
         book = load_workbook(
-            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'))
+            os.path.join(self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'))
         writer = pd.ExcelWriter(
-            os.path.join(*self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'),
+            os.path.join(self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'),
             engine='openpyxl')
         writer.book = book
 
@@ -587,7 +590,7 @@ class ExportarDados(Screen):
 
         # Conectar ao banco
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(*self.manager.get_screen('principal').diretorio,
+                                  os.path.join(self.manager.get_screen('principal').diretorio,
                                                self.manager.get_screen('principal').base_dados))
         cursor = self.cnx.cursor()
         cursor.execute('select * from notas_fiscais')
@@ -623,11 +626,11 @@ class Relatorios(Screen):
 
     def relatorios(self):
         # Criar planilha para gerar arquivo
-        writer = pd.ExcelWriter(os.path.join(*self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
+        writer = pd.ExcelWriter(os.path.join(self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
                                 engine='xlsxwriter')
         # Conectar ao banco
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(*self.manager.get_screen('principal').diretorio,
+                                  os.path.join(self.manager.get_screen('principal').diretorio,
                                                self.manager.get_screen('principal').base_dados))
         cursor = self.cnx.cursor()
 
@@ -667,10 +670,10 @@ class Relatorios(Screen):
         if self.ids.check_iss.active:
             # Criar diretório para salvar arquivos pdf
             dir_pdfs = 'ISS_' + self.ids.dt_fim.text[3:].replace('/', '-')
-            os.mkdir(os.path.join(*self.manager.get_screen('principal').diretorio, dir_pdfs))
-            dados_responsavel = Principal().responsavel.copy()
+            os.mkdir(os.path.join(self.manager.get_screen('principal').diretorio, dir_pdfs))
+            dados_responsavel = self.manager.get_screen('principal').responsavel.copy()
             self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(*self.manager.get_screen('principal').diretorio,
+                                      os.path.join(self.manager.get_screen('principal').diretorio,
                                                    self.manager.get_screen('principal').base_dados))
             cursor = self.cnx.cursor()
 
@@ -688,7 +691,8 @@ class Relatorios(Screen):
                                'DateValue(?) '
                                'and cidade = ? order by cidade, cnpj', (self.ids.dt_ini.text, self.ids.dt_fim.text, i))
 
-                vencimentos = pd.read_excel(os.path.join(*Principal().diretorio, 'Programa Planilha de retenção.xlsx'),
+                vencimentos = pd.read_excel(os.path.join(self.manager.get_screen('principal').diretorio,
+                                                         'Programa Planilha de retenção.xlsx'),
                                             sheet_name='Relatório ISS', usecols=[9, 10], skiprows=10, dtype=str)
 
                 for index, row in vencimentos.iterrows():
@@ -750,7 +754,7 @@ class Relatorios(Screen):
                 pdf.multi_cell(w=40, h=5, txt='GECOT')
                 data = self.ids.dt_fim.text[3:].replace('/', '-')
                 nome_arquivo = i + ' ' + data + '.pdf'
-                pdf.output(os.path.join(*self.manager.get_screen('principal').diretorio, dir_pdfs, nome_arquivo), 'F')
+                pdf.output(os.path.join(self.manager.get_screen('principal').diretorio, dir_pdfs, nome_arquivo), 'F')
 
         # ===========================Relatório INSS==========================================================#
         if self.ids.check_inss.active:
