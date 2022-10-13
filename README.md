@@ -10,6 +10,8 @@ Criar uma tabela auxiliar com os códigos de serviços e suas respectivas reten�
 Criar um cadastro de fornecedores, utilizando auto-preenchimento no caso de multiplas notas do mesmo emissor;
 Para fins de ISS, criar uma tabela com as principais prefeituras e serviços utilizados com retenção, facilitando consultas e eventuais erros de aliquotas na emissão das notas.
 
+Para testar esse script, deve-se comentar as linhas 40, 44, 45 e descomentar as linhas 41, 46 e 47.
+
 Tela Principal:
 ![alt text](https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/tela_inicio.png?raw=true)
 
