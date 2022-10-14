@@ -12,8 +12,9 @@ Para fins de ISS, criar uma tabela com as principais prefeituras e serviços uti
 
 Para testar esse script, deve-se comentar as linhas 40, 44, 45 e descomentar as linhas 41, 46 e 47.
 
-Tela Principal:
-![alt text](https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/tela_inicio.png?raw=true)
+Tela Principal:<br>
+<img src="https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/cadastro-nota.gif" width="800" height="400">
 
-Tela Consultas:
-![alt text](https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/tela_tabela.png?raw=true)
+
+Tela Consultas:<br>
+<img src="https://github.com/LeandroPOliveira/Controle-Notas-Servicos-Kivy/blob/main/consulta-nota.gif" width="800" height="400">
