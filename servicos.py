@@ -16,6 +16,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from openpyxl.reader.excel import load_workbook
 from fpdf import FPDF
+from kivy.core.window import Window
 
 
 class ContentNavigationDrawer(Screen):
@@ -59,7 +60,6 @@ class Principal(Screen):
         padrao = '\\d{2}/\\d{2}/\\d{4}'
         incorretos = []
         for dt in datas:
-            print(dt)
             validar = re.findall(padrao, dt)
 
             if len(validar) < 1:
@@ -781,6 +781,7 @@ class WindowManager(ScreenManager):
 
 
 class NotasFiscais(MDApp):
+    tamanho_tela = Window.size
 
     def build(self):
         return Builder.load_file('servicos.kv')

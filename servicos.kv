@@ -35,9 +35,9 @@
 
 
 <MDTextField>
-    size_hint: (.1, .1)
+    size_hint: (.1, .1 )
     mode: "rectangle"
-    font_size: 20
+    font_size: 20 if app.tamanho_tela[0] > 1366 else 16
     line_color_normal: [0,0,0,1]
     text_color_normal: 0, 0, 0, 1
     text_color_focus: 0, 0, 0, 1
@@ -45,7 +45,7 @@
 
 <MDRectangleFlatButton>
     size_hint: (.15, .08)
-    font_size: 26
+    font_size: 26 if app.tamanho_tela[0] > 1366 else 20
     text_color: (1, 1, 1, 1)
     #line_color: 0, 0, 1, 1
     md_bg_color: (33/255,150/255,243/255,1)
@@ -275,7 +275,7 @@ Screen:
         MDLabel:
             text: 'Repetir Lançamento'
             size_hint: (.2, .1)
-            font_size: 20
+            font_size: 20 if app.tamanho_tela[0] > 1366 else 16
             pos_hint: {'x': .13, 'y': .35}
 
         MDSwitch:
@@ -289,7 +289,7 @@ Screen:
         MDLabel:
             text: 'Desoneração folha (3,5%)'
             valign: 'center'
-            font_size: 20
+            font_size: 20 if app.tamanho_tela[0] > 1366 else 16
             size_hint: (.2, .1)
             pos_hint: {'x': .54, 'y': .35}
 
@@ -347,14 +347,12 @@ Screen:
 
     MDTextField:
         id: cad_cnpj
-        font_size: 20
         size_hint: (.2, .08)
         pos_hint: {'x': .4, 'y': .7}
         hint_text: "CNPJ"
 
     MDTextField:
         id: cad_nome
-        font_size: 20
         size_hint: (.2, .08)
         pos_hint: {'x': .4, 'y': .6}
         hint_text: "FORNECEDOR"
@@ -363,14 +361,12 @@ Screen:
 
     MDTextField:
         id: cad_mun
-        font_size: 20
         size_hint: (.2, .08)
         pos_hint: {'x': .4, 'y': .5}
         hint_text: "MUNICÍPIO"
 
     MDTextField:
         id: cad_regime
-        font_size: 20
         size_hint: (.2, .08)
         pos_hint: {'x': .4, 'y': .4}
         hint_text: "REGIME TRIBUTÁRIO"
@@ -378,7 +374,6 @@ Screen:
 
     MDTextField:
         id: aliq_simples
-        font_size: 20
         size_hint: (.2, .08)
         pos_hint: {'x': .4, 'y': .3}
         hint_text: "ALIQUOTA SIMPLES"
