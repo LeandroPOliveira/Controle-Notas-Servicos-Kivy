@@ -1,5 +1,6 @@
 import re
 
+from kivy.clock import Clock
 from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
@@ -17,6 +18,7 @@ from dateutil.relativedelta import relativedelta
 from openpyxl.reader.excel import load_workbook
 from fpdf import FPDF
 from kivy.core.window import Window
+import requests
 
 
 class ContentNavigationDrawer(Screen):
@@ -46,6 +48,7 @@ class Principal(Screen):
             self.responsavel = dados[1].split('; ')
         # self.responsavel = ['Fulano de Tal', 'Contador Junior']
         # self.diretorio = os.path.abspath(os.getcwd())
+        print(Window.size)
 
     def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
@@ -104,6 +107,8 @@ class Principal(Screen):
         self.dialog.dismiss()
 
     def busca_servico(self):  # Buscar no cadastro as aliquotas segundo o código de serviço utilizado
+        buscar_servico = requests.get(f'https://api-lei116.herokuapp.com/get-item/{self.ids.cod_serv.text}')
+        busca = buscar_servico.json()
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
                                   os.path.join(self.diretorio, self.base_dados))
         cursor = self.cnx.cursor()
@@ -113,10 +118,11 @@ class Principal(Screen):
                      'iss': self.ids.aliq_iss}
             for imp, aliq in lista.items():
                 if self.ids.regime_trib.text in 'nãoNÃOnaoNAONãoNormalnormal':  # Caso não seja Simples Nacional
-                    cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
-                    busca = cursor.fetchone()
+                    # cursor.execute(f'select {imp} from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
+                    # busca = cursor.fetchone()
+
                     if busca is not None:
-                        aliq.text = str(round(busca[0], 2)).replace('.', ',')
+                        aliq.text = str(round(float(busca[imp]), 2)).replace('.', ',')
                     else:
                         self.dialog_busca_serv = MDDialog(text="Código de Serviço não encontrado!",
                                                           radius=[20, 7, 20, 7], )
@@ -145,9 +151,9 @@ class Principal(Screen):
         #else:
          #   self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text = '0', '0', '0', '0'
         try:
-            cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
-            busca2 = cursor.fetchone()
-            self.descr_serv = busca2[0][0:190]
+            # cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
+            # busca2 = cursor.fetchone()
+            self.descr_serv = busca['descricao'][0:190]
         except TypeError:
             pass
 
@@ -781,6 +787,7 @@ class WindowManager(ScreenManager):
 
 
 class NotasFiscais(MDApp):
+    Window.maximize()
     tamanho_tela = Window.size
 
     def build(self):
