@@ -145,6 +145,7 @@ class Principal(Screen):
                 cursor.execute('select aliq_iss from municipios where municipio = ? and cod_iss = ?',
                                (self.ids.mun_iss.text.capitalize(), self.ids.cod_serv.text,))
                 busca_aliq = cursor.fetchone()
+                print(busca_aliq)
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
             except TypeError:
                 pass
@@ -154,6 +155,8 @@ class Principal(Screen):
             # cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
             # busca2 = cursor.fetchone()
             self.descr_serv = busca['descricao'][0:190]
+        except KeyError:
+            pass
         except TypeError:
             pass
 
