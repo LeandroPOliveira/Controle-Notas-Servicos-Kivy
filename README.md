@@ -10,7 +10,7 @@ Criar uma tabela auxiliar com os códigos de serviços e suas respectivas reten�
 Criar um cadastro de fornecedores, utilizando auto-preenchimento no caso de multiplas notas do mesmo emissor;<br>
 Para fins de ISS, criar uma tabela com as principais prefeituras e serviços utilizados com retenção, facilitando consultas e eventuais erros de aliquotas na emissão das notas.<br>
 
-Para testar esse script, deve-se comentar as linhas 40, 44, 45 e descomentar as linhas 41, 46 e 47.
+Para testar esse script, deve-se comentar as linhas 43, 45 a 48 e descomentar as linhas 44, 49 e 50.
 
 ---
 
