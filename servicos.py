@@ -107,7 +107,7 @@ class Principal(Screen):
         self.dialog.dismiss()
 
     def busca_servico(self):  # Buscar no cadastro as aliquotas segundo o código de serviço utilizado
-        buscar_servico = requests.get(f'https://api-lei116.herokuapp.com/get-item/{self.ids.cod_serv.text}')
+        buscar_servico = requests.get(f'https://api-lei116.onrender.com/get-item/{self.ids.cod_serv.text}')
         busca = buscar_servico.json()
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
                                   os.path.join(self.diretorio, self.base_dados))
