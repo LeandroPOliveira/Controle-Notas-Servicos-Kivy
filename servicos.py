@@ -168,22 +168,26 @@ class Principal(Screen):
 
     def calcula_imposto(self, instance, aliquota):  # calcular impostos com o valor bruto fornecido e aliquotas
         if aliquota.text != '' and self.ids.v_bruto.text != '':
-            tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-            instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100), 2)).replace('.', ',')
+            calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+            # if float(calculo[1]) * (float(calculo[0]) / 100) >= 10:  # Verifica se está abaixo do valor mínimo a reter
+            instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100), 2)).replace('.', ',')
+            # else:  # se for menor que 10 reais não é feita a retenção
+            #     instance.text = '0,00'
+
         if aliquota.text == '11,00' or aliquota.text == '3,5':  # Construção civil
             if '%' in self.ids.exclusao.text:  # Dedução de materiais e equipamentos do valor tributado em %
-                tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-                instance.text = str(round(float(tupla[1]) * float(self.ids.exclusao.text.replace('%', '')) / 100 *
-                                          (float(tupla[0]) / 100), 2)).replace('.', ',')
+                calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+                instance.text = str(round(float(calculo[1]) * float(self.ids.exclusao.text.replace('%', '')) / 100 *
+                                          (float(calculo[0]) / 100), 2)).replace('.', ',')
             else:  # Dedução de materiais e equipamentos do valor tributado em R$
-                tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-                instance.text = str(round((float(tupla[1]) - float(self.ids.exclusao.text.replace(',', '.'))) *
-                                          (float(tupla[0]) / 100), 2)).replace('.', ',')
+                calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+                instance.text = str(round((float(calculo[1]) - float(self.ids.exclusao.text.replace(',', '.'))) *
+                                          (float(calculo[0]) / 100), 2)).replace('.', ',')
         aliq_ir_pf = ['7,50', '15,00', '22,50', '27,50']  # Para aluguéis PF, aliquotas vigentes do IRRF
         deducao = ['142,80', '354,80', '636,13', '869,36']  # Parcela a ser deduzida do cálculo
         if aliquota.text in aliq_ir_pf:
-            tupla = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-            instance.text = str(round(float(tupla[1]) * (float(tupla[0]) / 100) -
+            calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
+            instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100) -
                                       float(deducao[aliq_ir_pf.index(aliquota.text)].replace(',', '.')), 2)).replace(
                 '.', ',')
 
