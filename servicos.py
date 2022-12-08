@@ -174,7 +174,8 @@ class Principal(Screen):
             # else:  # se for menor que 10 reais não é feita a retenção
             #     instance.text = '0,00'
 
-        if aliquota.text == '11,00' or aliquota.text == '3,5':  # Construção civil
+        if aliquota.text == '11,0' or aliquota.text == '11,00' or \
+                aliquota.text == '3,5' or aliquota.text == '3,50':  # Construção civil
             if '%' in self.ids.exclusao.text:  # Dedução de materiais e equipamentos do valor tributado em %
                 calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
                 instance.text = str(round(float(calculo[1]) * float(self.ids.exclusao.text.replace('%', '')) / 100 *
