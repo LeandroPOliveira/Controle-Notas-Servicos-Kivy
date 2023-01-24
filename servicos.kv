@@ -430,6 +430,12 @@ Screen:
 
     on_enter:
         root.exp_banco()
+        root.manager.current = "principal"
+
+    MDLabel:
+        text: "Exportando Banco de Dados..."
+        halign: "center"
+        font_size: 20
 
 
 <Relatorios>:
@@ -512,15 +518,8 @@ Screen:
             pos_hint: {'x': .45, 'y': .435}
             size_hint: .20, .1
 
-        MDTextField:
-            id: diretorio
-            text: ''
-            pos_hint: {'x': .35, 'y': .3}
-            size_hint: .3, .1
-            hint_text: "Diretório"
-
         MDRectangleFlatButton:
             text: 'Gerar Relatórios'
-            pos_hint: {'x':0.425, 'y':0.15}
+            pos_hint: {'x':0.425, 'y':0.25}
             on_release:
                 root.relatorios()

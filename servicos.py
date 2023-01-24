@@ -1,6 +1,6 @@
-import re
-
-from kivy.clock import Clock
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
+from fpdf import FPDF
 from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
@@ -8,16 +8,14 @@ from kivymd.uix.datatables import MDDataTable
 from kivy.lang.builder import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.metrics import dp
-import os
-from datetime import datetime, date
-import pyodbc
+from kivy.core.window import Window
 from kivy.utils import get_color_from_hex
 from kivymd.uix.dialog import MDDialog
 import pandas as pd
-from dateutil.relativedelta import relativedelta
+import pyodbc
 from openpyxl.reader.excel import load_workbook
-from fpdf import FPDF
-from kivy.core.window import Window
+import os
+import re
 import requests
 
 
@@ -40,15 +38,9 @@ class Principal(Screen):
         self.dialog_apg = None
         self.dialog_obs = None
         self.cnx = None
-        self.base_dados = 'Base_notas.accdb;'
-        # self.base_dados = 'base_notas - exemplo.accdb;'
-        with open('dados.txt', 'r', encoding='utf-8') as bd:  # Caminho da pasta no servidor com o banco de dados
-            dados = bd.readlines()
-            self.diretorio = dados[0].strip()
-            self.responsavel = dados[1].split('; ')
-        # self.responsavel = ['Fulano de Tal', 'Contador Junior']
-        # self.diretorio = os.path.abspath(os.getcwd())
-        print(Window.size)
+        self.base_dados = 'base_notas - exemplo.accdb;'
+        self.responsavel = ['Fulano de Tal', 'Contador Junior']
+        self.diretorio = os.path.abspath(os.getcwd())
 
     def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
@@ -70,7 +62,7 @@ class Principal(Screen):
 
         if len(incorretos) > 0:
             self.dialog_data = MDDialog(text=f"Data no formato incorreto no(s) campo(s) {incorretos}",
-                                        radius=[20, 7, 20, 7],)
+                                        radius=[20, 7, 20, 7], )
             self.dialog_data.open()
 
     def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
@@ -149,8 +141,9 @@ class Principal(Screen):
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
             except TypeError:
                 pass
-        #else:
-         #   self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text = '0', '0', '0', '0'
+        # else:
+        # self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text,
+        # self.ids.aliq_iss.text = '0', '0', '0', '0'
         try:
             # cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
             # busca2 = cursor.fetchone()
@@ -168,14 +161,18 @@ class Principal(Screen):
 
     def calcula_imposto(self, instance, aliquota):  # calcular impostos com o valor bruto fornecido e aliquotas
         if aliquota.text != '' and self.ids.v_bruto.text != '':
+            self.ids.v_bruto.text = self.ids.v_bruto.text.replace('.', '')
+            if aliquota.text != '11,0':
+                aliquota.text = aliquota.text.ljust(4, '0')
+            else:
+                aliquota.text = aliquota.text.ljust(5, '0')
             calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-            # if float(calculo[1]) * (float(calculo[0]) / 100) >= 10:  # Verifica se está abaixo do valor mínimo a reter
-            instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100), 2)).replace('.', ',')
-            # else:  # se for menor que 10 reais não é feita a retenção
-            #     instance.text = '0,00'
-
-        if aliquota.text == '11,0' or aliquota.text == '11,00' or \
-                aliquota.text == '3,5' or aliquota.text == '3,50':  # Construção civil
+            if float(calculo[1]) * (float(calculo[0]) / 100) >= 10:  # Verifica se está abaixo do valor mínimo a reter
+                instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100), 2)).replace('.', ',')
+            else:  # se for menor que 10 reais não é feita a retenção
+                instance.text = '0,00'
+                print(aliquota.ids.key())
+        if aliquota.text == '11,00' or aliquota.text == '3,50':  # Construção civil
             if '%' in self.ids.exclusao.text:  # Dedução de materiais e equipamentos do valor tributado em %
                 calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
                 instance.text = str(round(float(calculo[1]) * float(self.ids.exclusao.text.replace('%', '')) / 100 *
@@ -195,10 +192,10 @@ class Principal(Screen):
     def valor_liq(self):  # Calcular valor líquido a pagar
         try:
             self.ids.v_liq.text = str(round(float(self.ids.v_bruto.text.replace(',', '.')) -
-                                        (sum([float(self.ids.irrf.text.replace(',', '.')),
-                                              float(self.ids.crf.text.replace(',', '.')),
-                                              float(self.ids.inss.text.replace(',', '.')),
-                                              float(self.ids.iss.text.replace(',', '.'))])), 2)).replace('.', ',')
+                                            (sum([float(self.ids.irrf.text.replace(',', '.')),
+                                                  float(self.ids.crf.text.replace(',', '.')),
+                                                  float(self.ids.inss.text.replace(',', '.')),
+                                                  float(self.ids.iss.text.replace(',', '.'))])), 2)).replace('.', ',')
         except ValueError:
             pass
 
@@ -232,7 +229,7 @@ class Principal(Screen):
                                  self.ids.mun_iss.text.capitalize(),
                                  self.ids.regime_trib.text,
                                  self.ids.cod_serv.text,
-                                 self.ids.v_bruto.text,
+                                 self.ids.v_bruto.text.replace('.', ''),
                                  self.ids.aliq_ir.text,
                                  self.ids.irrf.text,
                                  self.ids.aliq_crf.text,
@@ -594,9 +591,11 @@ class ExportarDados(Screen):
     def exp_banco(self):
         # exportar banco completo para consultas e geração de guias de recolhimento
         book = load_workbook(
-            os.path.join(self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'))
+            os.path.join(self.manager.get_screen('principal').diretorio,
+                         'Programa Planilha de retenção - exemplo.xlsx'))
         writer = pd.ExcelWriter(
-            os.path.join(self.manager.get_screen('principal').diretorio, 'Programa Planilha de retenção.xlsx'),
+            os.path.join(self.manager.get_screen('principal').diretorio,
+                         'Programa Planilha de retenção - exemplo.xlsx'),
             engine='openpyxl')
         writer.book = book
 
