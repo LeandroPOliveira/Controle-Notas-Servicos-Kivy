@@ -167,11 +167,13 @@ class Principal(Screen):
             else:
                 aliquota.text = aliquota.text.ljust(5, '0')
             calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-            if float(calculo[1]) * (float(calculo[0]) / 100) >= 10:  # Verifica se está abaixo do valor mínimo a reter
+            # Verifica se está abaixo do valor mínimo retido, com excessão do iss
+            if float(calculo[1]) * (float(calculo[0]) / 100) >= 10 or \
+                    list(self.ids.keys())[list(self.ids.values()).index(instance)] == 'iss':
                 instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100), 2)).replace('.', ',')
             else:  # se for menor que 10 reais não é feita a retenção
                 instance.text = '0,00'
-                print(aliquota.ids.key())
+
         if aliquota.text == '11,00' or aliquota.text == '3,50':  # Construção civil
             if '%' in self.ids.exclusao.text:  # Dedução de materiais e equipamentos do valor tributado em %
                 calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
