@@ -78,7 +78,7 @@ class Principal(Screen):
                 # Buscar Situação Tributária
                 cursor.execute('select optante_simples from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
                 busca_simples = cursor.fetchone()
-                self.ids.regime_trib.text = busca_simples[0]
+                self.ids.regime_trib.text = busca_simples[0].capitalize()
             except TypeError:
                 if not self.dialog:
                     self.dialog = MDDialog(text="Fornecedor não cadastrado. Deseja cadastrar?",
@@ -470,7 +470,7 @@ class CadastroPrestador(Screen):
                 cursor = cnx.cursor()
                 cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?, ?)',
                                (self.ids.cad_cnpj.text, self.ids.cad_nome.text,
-                                self.ids.cad_mun.text, self.ids.cad_regime.text, self.ids.aliq_simples.text))
+                                self.ids.cad_mun.text, self.ids.cad_regime.text.capitalize(), self.ids.aliq_simples.text))
                 cnx.commit()
                 cnx.close()
                 self.dialog_cad = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
