@@ -16,6 +16,12 @@
                     root.screen_manager.current = "tela_prest"
 
             OneLineListItem:
+                text: "Pesquisar notas"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "pesquisar"
+
+            OneLineListItem:
                 text: "Consulta Banco"
                 on_press:
                     root.nav_drawer.set_state("close")
@@ -60,6 +66,7 @@ Screen:
         title: "Notas Fiscais de Serviço"
         left_action_items: [["menu", lambda x: nav_drawer.set_state("open")]]
 
+
     MDNavigationLayout:
         x: toolbar.height
 
@@ -71,6 +78,9 @@ Screen:
 
             CadastroPrestador:
                 name: "tela_prest"
+
+            PesquisarNota:
+                name: "pesquisar"
 
             BancoDados:
                 name: "banco_dados"
@@ -295,35 +305,30 @@ Screen:
 
         MDRectangleFlatButton:
             text: 'Adicionar'
-            pos_hint: {'x':0.10, 'y':0.15}
+            pos_hint: {'x':0.125, 'y':0.15}
             on_release:
                 root.adicionar()
 
         MDRectangleFlatButton:
             text: 'Limpar Campos'
-            pos_hint: {'x':0.275, 'y':0.15}
+            pos_hint: {'x':0.325, 'y':0.15}
             on_release:
                 root.limpar()
 
         MDRectangleFlatButton:
             text: 'Atualizar'
-            pos_hint: {'x':0.45, 'y':0.15}
+            pos_hint: {'x':0.525, 'y':0.15}
             on_release:
                 root.atualizar()
 
         MDRectangleFlatButton:
-            text: 'Buscar'
-            pos_hint: {'x':0.625, 'y':0.15}
-            on_release:
-                root.buscar()
-
-        MDRectangleFlatButton:
             text: 'Apagar'
-            pos_hint: {'x':0.8, 'y':0.15}
+            pos_hint: {'x':0.725, 'y':0.15}
             on_release:
                 root.apagar()
 
 <CadastroPrestador>
+    on_enter: root.copia_cnpj()
 
     Image:
         size_hint_y: 0.92
@@ -396,11 +401,50 @@ Screen:
         on_release:
             root.pesquisar_prestador()
 
+<PesquisarNota>:
+
+    Image:
+        size_hint_y: 0.92
+
+    MDRectangleFlatButton:
+        size_hint: .60, .775
+        pos_hint: {'x': .2, 'y': .1}
+        text_color: (36/255,100/255,203/255,1)
+        #line_color: 1, 1, 1, 1
+        md_bg_color: 1, 1, 1, 1
+        ripple_scale: 0
+
+    MDLabel:
+        text: "Pesquisar notas fiscais"
+        pos_hint: {'x': .35, 'y': .725}
+        size_hint: .3, .2
+        halign: 'center'
+        font_size: 30
+        theme_text_color: "Custom"
+        text_color: (33/255,150/255,243/255,1)
+
+    MDTextField:
+        id: busca_fornecedor
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .7}
+        hint_text: "Nome Fornecedor"
+
+    MDTextField:
+        id: busca_num
+        size_hint: (.2, .08)
+        pos_hint: {'x': .4, 'y': .6}
+        hint_text: "Número da nota"
+
+    MDRectangleFlatButton:
+        text: 'Pesquisar'
+        pos_hint: {'center_x':0.5, 'y':0.15}
+        on_release:
+            root.pesquisar_notas()
 
 <BancoDados>:
 
     on_enter:
-        root.gerar_banco()
+        root.gerar_banco(root.filtro_bd)
 
     Image:
         size_hint_y: 0.92

@@ -162,12 +162,12 @@ class Principal(Screen):
     def calcula_imposto(self, instance, aliquota):  # calcular impostos com o valor bruto fornecido e aliquotas
         if aliquota.text != '' and self.ids.v_bruto.text != '':
             self.ids.v_bruto.text = self.ids.v_bruto.text.replace('.', '')
-            if aliquota.text != '11,0':
+            if float(aliquota.text.replace(',', '.')) < 10.0:
                 aliquota.text = aliquota.text.ljust(4, '0')
             else:
                 aliquota.text = aliquota.text.ljust(5, '0')
             calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
-            # Verifica se está abaixo do valor mínimo retido, com excessão do iss
+            # Verifica se está abaixo do valor mínimo retido, com exceção do iss
             if float(calculo[1]) * (float(calculo[0]) / 100) >= 10 or \
                     list(self.ids.keys())[list(self.ids.values()).index(instance)] == 'iss':
                 instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100), 2)).replace('.', ',')
@@ -284,40 +284,6 @@ class Principal(Screen):
         self.dialog_apg = MDDialog(text="Registro apagado com sucesso!", radius=[20, 7, 20, 7], )
         self.dialog_apg.open()
         self.limpar()
-
-    def buscar(self):  # Pesquisar com número da nota
-        try:
-            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(self.diretorio, self.base_dados))
-            cursor = self.cnx.cursor()
-            cursor.execute('select * FROM notas_fiscais WHERE NF=?', (self.ids.num_nota.text,))
-            row = cursor.fetchone()
-            self.ids.cod_id.text = str(row[0])
-            self.ids.dt_analise.text = row[1]
-            self.ids.dt_nota.text = row[2]
-            self.ids.dt_venc.text = row[3]
-            self.ids.num_nota.text = str(row[4])
-            self.ids.num_cnpj.text = row[5]
-            self.ids.cod_fornec.text = row[6]
-            self.ids.mun_iss.text = row[7]
-            self.ids.regime_trib.text = row[8]
-            self.ids.cod_serv.text = row[9]
-            self.ids.v_bruto.text = str(round(row[10], 2)).replace('.', ',')
-            self.ids.aliq_ir.text = str(round(row[11], 2)).replace('.', ',')
-            self.ids.irrf.text = str(round(row[12], 2)).replace('.', ',')
-            self.ids.aliq_crf.text = str(round(row[13], 2)).replace('.', ',')
-            self.ids.crf.text = str(round(row[14], 2)).replace('.', ',')
-            self.ids.aliq_inss.text = str(round(row[15], 2)).replace('.', ',')
-            self.ids.inss.text = str(round(row[16], 2)).replace('.', ',')
-            self.ids.aliq_iss.text = str(round(row[17], 2)).replace('.', ',')
-            self.ids.iss.text = str(round(row[18], 2)).replace('.', ',')
-            self.ids.v_liq.text = str(round(row[19], 2)).replace('.', ',')
-            self.cnx.commit()
-            self.cnx.close()
-        except TypeError:
-            self.dialog_not = MDDialog(text="Registro não encontrado!", radius=[20, 7, 20, 7], )
-            self.dialog_not.open()
-            self.limpar()
 
     def atualizar(self):  # Atualizar dados da nota fiscal no banco de dados
         try:
@@ -509,7 +475,17 @@ class CadastroPrestador(Screen):
         self.ids.aliq_simples.text = ''
 
 
+class PesquisarNota(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def pesquisar_notas(self):
+        self.manager.get_screen('banco_dados').filtro_bd = self.ids.busca_fornecedor.text
+        self.manager.current = 'banco_dados'
+
+
 class BancoDados(Screen):
+    filtro_bd = StringProperty('')
     lista = []
 
     def __init__(self, **kwargs):
@@ -518,14 +494,17 @@ class BancoDados(Screen):
         self.total_lancamento = None
         self.data_tables = None
 
-    def gerar_banco(self):  # Gerar banco de dados para visualização
+    def gerar_banco(self, condicao=''):  # Gerar banco de dados para visualização
         # conectar banco de dados
         self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
                                   os.path.join(self.manager.get_screen('principal').diretorio,
                                                self.manager.get_screen('principal').base_dados))
 
         cursor = self.cnx.cursor()
-        cursor.execute('select * from notas_fiscais order by ID desc')
+        if condicao is None:
+            cursor.execute('select * from notas_fiscais order by ID desc')
+        else:
+            cursor.execute(f'select * from notas_fiscais where Fornecedor like ? order by ID desc', (condicao + '%',))
         resultado = cursor.fetchall()
         self.cnx.commit()
         self.cnx.close()
@@ -544,6 +523,7 @@ class BancoDados(Screen):
             lin_lancamento.clear()
 
         self.add_datatable()
+        self.filtro_bd = ''
 
     def add_datatable(self):  # Adicionar tabela na tela
         self.data_tables = MDDataTable(pos_hint={'center_x': 0.5, 'center_y': 0.5},
