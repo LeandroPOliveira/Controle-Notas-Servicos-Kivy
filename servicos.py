@@ -398,6 +398,9 @@ class CadastroPrestador(Screen):
         self.dialog_cad_const = None
         self.dialog_cad = None
 
+    def copia_cnpj(self):
+        self.ids.cad_cnpj.text = self.manager.get_screen('principal').ids.num_cnpj.text
+
     def mascara_cad(self):  # função para formatar CNPJ
         mask = self.ids.cad_cnpj.text
         if mask != '' and '/' not in mask and len(mask) >= 14:
@@ -529,8 +532,8 @@ class BancoDados(Screen):
         self.data_tables = MDDataTable(pos_hint={'center_x': 0.5, 'center_y': 0.5},
                                        size_hint=(1, 0.8),
                                        use_pagination=True, rows_num=10,
-                                       background_color_header=get_color_from_hex("#65275d"),
-                                       background_color_selected_cell=get_color_from_hex("#eddaeb"),
+                                       background_color_header=get_color_from_hex("#fca311"),
+                                       background_color_selected_cell=get_color_from_hex("#e5e5e5"),
                                        check=True,
                                        column_data=[("[color=#ffffff]ID[/color]", dp(20)),
                                                     ("[color=#ffffff]Dt_Análise[/color]", dp(20)),
