@@ -51,19 +51,29 @@ class Principal(Screen):
             pass
 
     def valida_data(self):
-        datas = [self.ids.dt_analise.text, self.ids.dt_nota.text, self.ids.dt_venc.text]
-        padrao = '\\d{2}/\\d{2}/\\d{4}'
-        incorretos = []
-        for dt in datas:
-            validar = re.findall(padrao, dt)
+        if self.ids.dt_analise.text != '':
+            datas = [self.ids.dt_analise, self.ids.dt_nota, self.ids.dt_venc]
+            padrao = '\\d{2}/\\d{2}/\\d{4}'
+            incorretos = []
+            for dt in datas:
+                try:
+                    # verifica se a data é valida
+                    datetime(int(dt.text[-4:]), int(dt.text[3:5]), int(dt.text[0:2]))
 
-            if len(validar) < 1:
-                incorretos.append(dt)
+                    validar = re.findall(padrao, dt.text)  # validar se está no padrão estabelecido
+                    if len(validar) < 1:
+                        incorretos.append(dt.hint_text)
 
-        if len(incorretos) > 0:
-            self.dialog_data = MDDialog(text=f"Data no formato incorreto no(s) campo(s) {incorretos}",
-                                        radius=[20, 7, 20, 7], )
-            self.dialog_data.open()
+                except ValueError:
+                    incorretos.append(dt.hint_text)
+                if len(dt.text) > 10:
+                    incorretos.append(dt.hint_text)
+
+            if len(incorretos) > 0:
+                if not self.dialog_data:
+                    self.dialog_data = MDDialog(text=f"Data no formato incorreto no(s) campo(s) {incorretos}",
+                                                radius=[20, 7, 20, 7], )
+                    self.dialog_data.open()
 
     def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
@@ -635,7 +645,7 @@ class Relatorios(Screen):
         # =================== Relatório Imposto de Renda ===============================================#
         if self.ids.check_ir.active:
             cursor.execute('select cnpj, fornecedor, sum(irrf) from notas_fiscais '
-                           'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) <= '
+                           'where DateValue([data]) >= DateValue(?) and DateValue([data]) <= '
                            'DateValue(?) group by cnpj, fornecedor', self.ids.dt_ini.text, self.ids.dt_fim.text)
             resultado = cursor.fetchall()
             lista = [[], [], []]
@@ -644,15 +654,29 @@ class Relatorios(Screen):
                     lista[colunas_ir].append(i[colunas_ir])
             tabela = pd.DataFrame(lista).transpose()
             tabela.columns = ['CNPJ', 'Fornecedor', 'IRRF']
+            tabela['IRRF'] = tabela['IRRF'].astype(float)
+            tabela = tabela[tabela['IRRF'] != 0]
+            tabela.loc['Total'] = tabela.sum(numeric_only=True)
             tabela.to_excel(writer, sheet_name='Irrf', index=False)
+
+            workbook = writer.book
+            worksheet = writer.sheets['Irrf']
+
+            format1 = workbook.add_format({'num_format': '#,##0.00'})
+            worksheet.set_column('A:A', 20)
+            worksheet.set_column('B:B', 50)
+            worksheet.set_column('C:C', 15, format1)
 
         # =========================== Relatório de Contribuições =========================================#
         if self.ids.check_crf.active:
-            cursor.execute('select * from notas_fiscais where data_vencimento <> 0 (select data_vencimento, '
-                           'cnpj, fornecedor, sum(crf) from notas_fiscais '
+            cursor.execute('select data_vencimento from notas_fiscais')
+            res2 = cursor.fetchall()
+            teste = pd.DataFrame(res2)
+            teste.to_excel('teste.xlsx')
+
+            cursor.execute('select data_vencimento, cnpj, fornecedor, sum(crf) from notas_fiscais '
                            'where DateValue(data_vencimento) >= DateValue(?) and DateValue(data_vencimento) <= '
-                           'DateValue(?) '
-                           'group by data_vencimento, cnpj, fornecedor order by fornecedor, data_vencimento)',
+                           'DateValue(?) group by data_vencimento, cnpj, fornecedor',
                            (self.ids.dt_ini.text, self.ids.dt_fim.text))
             resultado = cursor.fetchall()
             lista2 = [[], [], [], []]
@@ -661,7 +685,18 @@ class Relatorios(Screen):
                     lista2[colunas_crf].append(i[colunas_crf])
             tabela2 = pd.DataFrame(lista2).transpose()
             tabela2.columns = ['Data_Vencimento', 'CNPJ', 'Fornecedor', 'CRF']
-            tabela2.to_excel(writer, sheet_name='Crf', index=False)
+            tabela2['CRF'] = tabela2['CRF'].astype(float)
+            tabela2 = tabela2[tabela2['CRF'] != 0]
+            tabela2.loc['Total'] = tabela2.sum(numeric_only=True)
+            tabela2.to_excel(writer, sheet_name='CRF', index=False)
+
+            workbook = writer.book
+            worksheet = writer.sheets['CRF']
+
+            format1 = workbook.add_format({'num_format': '#,##0.00'})
+            worksheet.set_column('B:B', 20)
+            worksheet.set_column('C:C', 50)
+            worksheet.set_column('D:D', 15, format1)
 
         # ===========================Relatório ISS ==========================================================#
         # Gerar relatório do ISS por prefeituras em pdf
@@ -756,18 +791,34 @@ class Relatorios(Screen):
 
         # ===========================Relatório INSS==========================================================#
         if self.ids.check_inss.active:
-            cursor.execute('select data, NF, cnpj, fornecedor, valor_bruto, inss from notas_fiscais '
-                           'where DateValue(data_analise) >= DateValue(?) and DateValue(data_analise) '
-                           '<= DateValue(?)',
+            cursor.execute('select cnpj, fornecedor, sum(valor_bruto), sum(inss) from notas_fiscais '
+                           'where DateValue(data) >= DateValue(?) and DateValue(data) '
+                           '<= DateValue(?) group by cnpj, fornecedor',
                            (self.ids.dt_ini.text, self.ids.dt_fim.text))
             resultado = cursor.fetchall()
-            lista4 = [[], [], [], [], [], []]
+            lista4 = [[], [], [], []]
             for i in resultado:
-                for colunas_ir in range(6):
+                for colunas_ir in range(4):
                     lista4[colunas_ir].append(i[colunas_ir])
             tabela4 = pd.DataFrame(lista4).transpose()
-            tabela4.columns = ['Data Nota Fiscal', 'Nº NF', 'CNPJ', 'Fornecedor', 'Valor Bruto', 'INSS']
+            tabela4.columns = ['CNPJ', 'Fornecedor', 'Valor Bruto', 'INSS']
+
+            tabela4['INSS'] = tabela4['INSS'].astype(float)
+            tabela4['Valor Bruto'] = tabela4['Valor Bruto'].astype(float)
+            tabela4 = tabela4[tabela4['INSS'] != 0]
+            tabela4.loc['Total'] = tabela4.sum(numeric_only=True)
             tabela4.to_excel(writer, sheet_name='INSS', index=False)
+
+            workbook = writer.book
+            worksheet = writer.sheets['INSS']
+
+            format1 = workbook.add_format({'num_format': '#,##0.00'})
+            worksheet.set_column('A:A', 20)
+            worksheet.set_column('B:B', 50)
+            worksheet.set_column('C:C', 15, format1)
+            worksheet.set_column('D:D', 15, format1)
+
+            writer.save()
         else:
             pass
 
