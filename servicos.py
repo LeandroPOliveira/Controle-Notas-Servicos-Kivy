@@ -29,18 +29,17 @@ class Principal(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.dialog = None
-        self.dialog_data = None
-        self.dialog_busca_serv = None
-        self.dialog_atu = None
-        self.dialog_add = None
-        self.dialog_not = None
-        self.dialog_err = None
-        self.dialog_apg = None
-        self.dialog_obs = None
-        self.cnx = None
+        self.dialog_cad = None
         self.base_dados = 'base_notas - exemplo.accdb;'
         self.responsavel = ['Fulano de Tal', 'Contador Junior']
         self.diretorio = os.path.abspath(os.getcwd())
+        self.path_database = r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' \
+                             + os.path.join(self.diretorio, self.base_dados)
+
+    def caixa_dialogo(self, mensagem):
+        if not self.dialog:
+            self.dialog = MDDialog(text=mensagem, radius=[20, 7, 20, 7], )
+            self.dialog.open()
 
     def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
@@ -63,24 +62,20 @@ class Principal(Screen):
                     validar = re.findall(padrao, dt.text)  # validar se está no padrão estabelecido
                     if len(validar) < 1:
                         incorretos.append(dt.hint_text)
-
                 except ValueError:
                     incorretos.append(dt.hint_text)
                 if len(dt.text) > 10:
                     incorretos.append(dt.hint_text)
 
             if len(incorretos) > 0:
-                if not self.dialog_data:
-                    self.dialog_data = MDDialog(text=f"Data no formato incorreto no(s) campo(s) {incorretos}",
-                                                radius=[20, 7, 20, 7], )
-                    self.dialog_data.open()
+                texto_mensagem = f'Data no formato incorreto no(s) campo(s) {incorretos}'
+                self.caixa_dialogo(texto_mensagem)
 
     def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
             try:
-                self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                          os.path.join(self.diretorio, self.base_dados))
-                cursor = self.cnx.cursor()
+                cnx = pyodbc.connect(self.path_database)
+                cursor = cnx.cursor()
                 cursor.execute('select nome from cadastro where cnpj = ?', (self.ids.num_cnpj.text,))
                 busca_nome = cursor.fetchone()
                 self.ids.cod_fornec.text = busca_nome[0]
@@ -90,30 +85,26 @@ class Principal(Screen):
                 busca_simples = cursor.fetchone()
                 self.ids.regime_trib.text = busca_simples[0].capitalize()
             except TypeError:
-                if not self.dialog:
-                    self.dialog = MDDialog(text="Fornecedor não cadastrado. Deseja cadastrar?",
-                                           buttons=[MDFlatButton(text="NÃO",
-                                                                 theme_text_color="Custom",
-                                                                 on_press=self.fecha_dialog),
-                                                    MDRaisedButton(text="SIM", theme_text_color="Custom",
-                                                                   on_press=self.pega_tela), ], )
-                self.dialog.open()
+                if not self.dialog_cad:
+                    self.dialog_cad = MDDialog(text="Fornecedor não cadastrado. Deseja cadastrar?",
+                                               buttons=[MDFlatButton(text="NÃO",
+                                                                     theme_text_color="Custom",
+                                                                     on_press=lambda x: self.dialog_cad.dismiss()),
+                                                        MDRaisedButton(text="SIM", theme_text_color="Custom",
+                                                                       on_press=lambda x: self.pega_tela()), ], )
+                    self.dialog_cad.open()
         else:
             pass
 
-    def pega_tela(self, inst):  # Ir à tela de cadastro para fornecedores não cadastrados
+    def pega_tela(self):  # Ir à tela de cadastro para fornecedores não cadastrados
         self.manager.current = 'tela_prest'
-        self.dialog.dismiss()
-
-    def fecha_dialog(self, inst):  # Fecha caixa de diálogo caso não deseje cadastrar
-        self.dialog.dismiss()
+        self.dialog_cad.dismiss()
 
     def busca_servico(self):  # Buscar no cadastro as aliquotas segundo o código de serviço utilizado
+        cnx = pyodbc.connect(self.path_database)
+        cursor = cnx.cursor()
         buscar_servico = requests.get(f'https://api-lei116.onrender.com/get-item/{self.ids.cod_serv.text}')
         busca = buscar_servico.json()
-        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(self.diretorio, self.base_dados))
-        cursor = self.cnx.cursor()
         if self.ids.cod_serv.text != '':
             self.ids.cod_serv.text = self.ids.cod_serv.text.lstrip('0')
             lista = {'irrf': self.ids.aliq_ir, 'crf': self.ids.aliq_crf, 'inss': self.ids.aliq_inss,
@@ -149,14 +140,11 @@ class Principal(Screen):
                 busca_aliq = cursor.fetchone()
                 print(busca_aliq)
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
+                cnx.close()
             except TypeError:
                 pass
-        # else:
-        # self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text,
-        # self.ids.aliq_iss.text = '0', '0', '0', '0'
+
         try:
-            # cursor.execute(f'select descricao from tabela_iss where servico = ?', (self.ids.cod_serv.text,))
-            # busca2 = cursor.fetchone()
             self.descr_serv = busca['descricao'][0:190]
         except KeyError:
             pass
@@ -219,15 +207,12 @@ class Principal(Screen):
 
     def adicionar(self):  # Adicionar nota fiscal lançada
         if self.ids.num_cnpj.text == '':
-            self.dialog_obs = MDDialog(
-                text="Insira todas as informações!",
-                radius=[20, 7, 20, 7], )
+            texto_mensagem = 'Insira todas as informações'
+            self.caixa_dialogo(texto_mensagem)
 
-            self.dialog_obs.open()
         else:
-            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(self.diretorio, self.base_dados))
-            cursor = self.cnx.cursor()
+            cnx = pyodbc.connect(self.path_database)
+            cursor = cnx.cursor()
             cursor.execute(
                 'INSERT INTO notas_fiscais (data_analise, data, data_vencimento, NF,	CNPJ, Fornecedor, cidade,'
                 'simples_nacional, codigo_servico, valor_bruto, aliq_irrf, irrf,	aliq_crf, crf, aliq_inss, '
@@ -254,11 +239,11 @@ class Principal(Screen):
             self.ids.lembrar.active = False
             self.ids.inss_reduzido.active = False
             self.limpar()
-            self.cnx.commit()
-            self.cnx.close()
+            cnx.commit()
+            cnx.close()
 
-            self.dialog_add = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
-            self.dialog_add.open()
+            texto_mensagem = 'Registro incluido com sucesso!'
+            self.caixa_dialogo(texto_mensagem)
 
     def limpar(self):  # Limpar os campos
         entradas = [self.ids.dt_analise, self.ids.dt_nota,
@@ -285,21 +270,19 @@ class Principal(Screen):
         self.descr_serv = ''
 
     def apagar(self):  # Apagar nota do banco de dados
-        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(self.diretorio, self.base_dados))
-        cursor = self.cnx.cursor()
+        cnx = pyodbc.connect(self.path_database)
+        cursor = cnx.cursor()
         cursor.execute('DELETE FROM notas_fiscais WHERE ID=?', (self.ids.cod_id.text,))
-        self.cnx.commit()
-        self.cnx.close()
-        self.dialog_apg = MDDialog(text="Registro apagado com sucesso!", radius=[20, 7, 20, 7], )
-        self.dialog_apg.open()
+        cnx.commit()
+        cnx.close()
+        texto_mensagem = 'Registro apagado com sucesso!'
+        self.caixa_dialogo(texto_mensagem)
         self.limpar()
 
     def atualizar(self):  # Atualizar dados da nota fiscal no banco de dados
         try:
-            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(self.diretorio, self.base_dados))
-            cursor = self.cnx.cursor()
+            cnx = pyodbc.connect(self.path_database)
+            cursor = cnx.cursor()
             cursor.execute(
                 'update notas_fiscais set DATA_ANALISE=?, DATA=?, DATA_VENCIMENTO=?, NF=?, CNPJ=?, FORNECEDOR=?, '
                 'CIDADE=?, SIMPLES_NACIONAL=?, CODIGO_SERVICO=?, VALOR_BRUTO=?, ALIQ_IRRF=?, IRRF=?, ALIQ_CRF=?, '
@@ -323,16 +306,16 @@ class Principal(Screen):
                                                                                               self.ids.iss.text,
                                                                                               self.ids.v_liq.text,
                                                                                               self.ids.cod_id.text))
-            self.cnx.commit()
-            self.cnx.close()
-            self.dialog_atu = MDDialog(text="Registro alterado com sucesso!", radius=[20, 7, 20, 7], )
-            self.dialog_atu.open()
+            cnx.commit()
+            cnx.close()
+            texto_mensagem = 'Registro alterado com sucesso!'
+            self.caixa_dialogo(texto_mensagem)
             self.limpar()
             self.inserir_notas()
 
         except TypeError:
-            self.dialog_err = MDDialog(text="Erro!", radius=[20, 7, 20, 7], )
-            self.dialog_err.open()
+            texto_mensagem = 'Erro!'
+            self.caixa_dialogo(texto_mensagem)
 
     def inserir_notas(self):  # Inserir dados da nota a ser modificada
         entradas = [self.ids.cod_id, self.ids.dt_analise, self.ids.dt_nota,
@@ -379,9 +362,8 @@ class Principal(Screen):
 
     def lembrar_lancamento(self):  # Lembrar informações do último lançamento para notas de mesmo prestador
         if self.ids.lembrar.active:
-            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(self.diretorio, self.base_dados))
-            cursor = self.cnx.cursor()
+            cnx = pyodbc.connect(self.path_database)
+            cursor = cnx.cursor()
             cursor.execute('SELECT TOP 1 data_analise, data, data_vencimento, nf, cnpj, fornecedor, simples_nacional,'
                            'codigo_servico from notas_fiscais order by id desc')
             row = cursor.fetchone()
@@ -393,20 +375,16 @@ class Principal(Screen):
             self.ids.cod_fornec.text = row[5]
             self.ids.regime_trib.text = row[6]
             self.ids.cod_serv.text = row[7]
-            self.cnx.commit()
+            cnx.commit()
 
         else:
             self.limpar()
 
 
 class CadastroPrestador(Screen):
-    teste = StringProperty(None)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.dialog_cad_err = None
-        self.dialog_cad_const = None
-        self.dialog_cad = None
 
     def copia_cnpj(self):
         self.ids.cad_cnpj.text = self.manager.get_screen('principal').ids.num_cnpj.text
@@ -421,9 +399,7 @@ class CadastroPrestador(Screen):
 
     def pesquisar_prestador(self):  # Pesquisar prestador pelo CNPJ
         try:
-            lmdb = os.path.join(self.manager.get_screen('principal').diretorio,
-                                self.manager.get_screen('principal').base_dados)
-            cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+            cnx = pyodbc.connect(self.manager.get_screen('principal').path_database)
             cursor = cnx.cursor()
             cursor.execute('SELECT * FROM cadastro WHERE CNPJ=?', (self.ids.cad_cnpj.text,))
             row = cursor.fetchone()
@@ -432,28 +408,26 @@ class CadastroPrestador(Screen):
             self.ids.cad_mun.text = row[2]
             self.ids.cad_regime.text = row[3]
             self.ids.aliq_simples.text = str(row[4])
-            cnx.commit()
             cnx.close()
         except TypeError:
-            self.dialog_cad = MDDialog(text="O CNPJ informado não consta no cadastro!", radius=[20, 7, 20, 7], )
-            self.dialog_cad.open()
+            texto_mensagem = 'O CNPJ informado não consta no cadastro!'
+            self.manager.get_screen('principal').caixa_dialogo(texto_mensagem)
 
     def cadastrar_prestador(self):  # Cadastrar novo prestador
         if self.ids.cad_cnpj.text == '':
             pass
         else:
             try:
-                lmdb = os.path.join(self.manager.get_screen('principal').diretorio,
-                                    self.manager.get_screen('principal').base_dados)
-                cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+                cnx = pyodbc.connect(self.manager.get_screen('principal').path_database)
                 cursor = cnx.cursor()
                 cursor.execute('INSERT INTO cadastro values (?, ?, ?, ?, ?)',
                                (self.ids.cad_cnpj.text, self.ids.cad_nome.text,
-                                self.ids.cad_mun.text, self.ids.cad_regime.text.capitalize(), self.ids.aliq_simples.text))
+                                self.ids.cad_mun.text, self.ids.cad_regime.text.capitalize(),
+                                self.ids.aliq_simples.text))
                 cnx.commit()
                 cnx.close()
-                self.dialog_cad = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
-                self.dialog_cad.open()
+                texto_mensagem = 'Registro incluido com sucesso!'
+                self.manager.get_screen('principal').caixa_dialogo(texto_mensagem)
                 self.ids.cad_cnpj.text = ''
                 self.ids.cad_nome.text = ''
                 self.ids.cad_mun.text = ''
@@ -462,14 +436,11 @@ class CadastroPrestador(Screen):
                 self.manager.current = 'principal'
 
             except pyodbc.DataError:
-                self.dialog_cad_err = MDDialog(text="Erro! CNPJ já cadastrado.", radius=[20, 7, 20, 7], )
-                self.dialog_cad_err.open()
+                texto_mensagem = 'Erro! CNPJ já cadastrado.'
+                self.manager.get_screen('principal').caixa_dialogo(texto_mensagem)
 
     def atualizar_cadastro(self):  # Atualizar cadastro após busca pelo CNPJ
-
-        lmdb = os.path.join(self.manager.get_screen('principal').diretorio,
-                            self.manager.get_screen('principal').base_dados)
-        cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' + lmdb)
+        cnx = pyodbc.connect(self.manager.get_screen('principal').path_database)
         cursor = cnx.cursor()
         cursor.execute('UPDATE cadastro SET NOME=?, MUNICÍPIO=?, OPTANTE_SIMPLES=?, ALIQUOTA=? WHERE CNPJ=?',
                        (self.ids.cad_nome.text,
@@ -479,8 +450,8 @@ class CadastroPrestador(Screen):
                         self.ids.cad_cnpj.text))
         cnx.commit()
         cnx.close()
-        self.dialog_cad_const = MDDialog(text="Cadastro alterado com sucesso!", radius=[20, 7, 20, 7], )
-        self.dialog_cad_const.open()
+        texto_mensagem = 'Cadastro alterado com sucesso!'
+        self.manager.get_screen('principal').caixa_dialogo(texto_mensagem)
         self.ids.cad_cnpj.text = ''
         self.ids.cad_nome.text = ''
         self.ids.cad_mun.text = ''
@@ -503,24 +474,19 @@ class BancoDados(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.cnx = None
         self.total_lancamento = None
         self.data_tables = None
 
     def gerar_banco(self, condicao=''):  # Gerar banco de dados para visualização
         # conectar banco de dados
-        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(self.manager.get_screen('principal').diretorio,
-                                               self.manager.get_screen('principal').base_dados))
-
-        cursor = self.cnx.cursor()
+        cnx = pyodbc.connect(self.manager.get_screen('principal').path_database)
+        cursor = cnx.cursor()
         if condicao is None:
             cursor.execute('select * from notas_fiscais order by ID desc')
         else:
             cursor.execute(f'select * from notas_fiscais where Fornecedor like ? order by ID desc', (condicao + '%',))
         resultado = cursor.fetchall()
-        self.cnx.commit()
-        self.cnx.close()
+        cnx.close()
         lin_lancamento = []
         self.total_lancamento = []
 
@@ -580,8 +546,6 @@ class ExportarDados(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.dialog_exp = None
-        self.dialog = None
 
     def exp_banco(self):
         # exportar banco completo para consultas e geração de guias de recolhimento
@@ -597,10 +561,8 @@ class ExportarDados(Screen):
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
 
         # Conectar ao banco
-        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(self.manager.get_screen('principal').diretorio,
-                                               self.manager.get_screen('principal').base_dados))
-        cursor = self.cnx.cursor()
+        cnx = pyodbc.connect(self.manager.get_screen('principal').path_database)
+        cursor = cnx.cursor()
         cursor.execute('select * from notas_fiscais')
         resultado = cursor.fetchall()
         lista = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
@@ -622,8 +584,9 @@ class ExportarDados(Screen):
         frame.to_excel(writer, sheet_name='Geral', index=False)
 
         writer.save()
-        self.dialog_exp = MDDialog(text="Banco exportado com sucesso!", radius=[20, 7, 20, 7], )
-        self.dialog_exp.open()
+        texto_mensagem = 'Banco exportado com sucesso!'
+        self.manager.get_screen('principal').caixa_dialogo(texto_mensagem)
+        cnx.close()
 
 
 class Relatorios(Screen):
@@ -637,10 +600,8 @@ class Relatorios(Screen):
         writer = pd.ExcelWriter(os.path.join(self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
                                 engine='xlsxwriter')
         # Conectar ao banco
-        self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                  os.path.join(self.manager.get_screen('principal').diretorio,
-                                               self.manager.get_screen('principal').base_dados))
-        cursor = self.cnx.cursor()
+        cnx = pyodbc.connect(self.manager.get_screen('principal').path_database)
+        cursor = cnx.cursor()
 
         # =================== Relatório Imposto de Renda ===============================================#
         if self.ids.check_ir.active:
@@ -669,11 +630,6 @@ class Relatorios(Screen):
 
         # =========================== Relatório de Contribuições =========================================#
         if self.ids.check_crf.active:
-            cursor.execute('select data_vencimento from notas_fiscais')
-            res2 = cursor.fetchall()
-            teste = pd.DataFrame(res2)
-            teste.to_excel('teste.xlsx')
-
             cursor.execute('select data_vencimento, cnpj, fornecedor, sum(crf) from notas_fiscais '
                            'where DateValue(data_vencimento) >= DateValue(?) and DateValue(data_vencimento) <= '
                            'DateValue(?) group by data_vencimento, cnpj, fornecedor',
@@ -705,10 +661,6 @@ class Relatorios(Screen):
             dir_pdfs = 'ISS_' + self.ids.dt_fim.text[3:].replace('/', '-')
             os.mkdir(os.path.join(self.manager.get_screen('principal').diretorio, dir_pdfs))
             dados_responsavel = self.manager.get_screen('principal').responsavel.copy()
-            self.cnx = pyodbc.connect(r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' +
-                                      os.path.join(self.manager.get_screen('principal').diretorio,
-                                                   self.manager.get_screen('principal').base_dados))
-            cursor = self.cnx.cursor()
 
             cursor.execute('select distinct cidade from notas_fiscais where DateValue(data_analise) >= '
                            'DateValue(?) and DateValue(data_analise) <= DateValue(?)',
@@ -823,6 +775,7 @@ class Relatorios(Screen):
             pass
 
         writer.save()
+        cnx.close()
 
 
 class WindowManager(ScreenManager):
