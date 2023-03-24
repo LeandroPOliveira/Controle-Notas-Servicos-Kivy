@@ -1,6 +1,8 @@
+import threading
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from fpdf import FPDF
+from kivy.clock import Clock
 from kivy.properties import StringProperty
 from kivymd.app import MDApp
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
@@ -35,11 +37,12 @@ class Principal(Screen):
         self.diretorio = os.path.abspath(os.getcwd())
         self.path_database = r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'r'DBQ=' \
                              + os.path.join(self.diretorio, self.base_dados)
+        self.incorretos = []
 
     def caixa_dialogo(self, mensagem):
         if not self.dialog:
             self.dialog = MDDialog(text=mensagem, radius=[20, 7, 20, 7], )
-            self.dialog.open()
+        self.dialog.open()
 
     def mascara(self):  # Formatar CNPJ com pontos e barra
         mask = self.ids.num_cnpj.text
@@ -50,26 +53,18 @@ class Principal(Screen):
             pass
 
     def valida_data(self):
-        if self.ids.dt_analise.text != '':
-            datas = [self.ids.dt_analise, self.ids.dt_nota, self.ids.dt_venc]
-            padrao = '\\d{2}/\\d{2}/\\d{4}'
-            incorretos = []
-            for dt in datas:
-                try:
-                    # verifica se a data é valida
-                    datetime(int(dt.text[-4:]), int(dt.text[3:5]), int(dt.text[0:2]))
+        datas = [self.ids.dt_analise, self.ids.dt_nota, self.ids.dt_venc]
+        for dt in datas:
+            try:
+                # verifica se a data é valida
+                datetime.strptime(dt.text, '%d/%m/%Y')
+            except ValueError:
+                self.incorretos.append(dt.hint_text)
+        if len(self.incorretos) >= 1:
+            texto_mensagem = f'Data no formato incorreto no(s) campo(s) {",".join(self.incorretos)}'
+            self.caixa_dialogo(texto_mensagem)
 
-                    validar = re.findall(padrao, dt.text)  # validar se está no padrão estabelecido
-                    if len(validar) < 1:
-                        incorretos.append(dt.hint_text)
-                except ValueError:
-                    incorretos.append(dt.hint_text)
-                if len(dt.text) > 10:
-                    incorretos.append(dt.hint_text)
-
-            if len(incorretos) > 0:
-                texto_mensagem = f'Data no formato incorreto no(s) campo(s) {incorretos}'
-                self.caixa_dialogo(texto_mensagem)
+        self.incorretos.clear()
 
     def busca_cadastro(self):  # Buscar os dados com o CNPJ fornecido de Nome, Situação Tributária
         if self.ids.num_cnpj.text != '' and 'aluguel' not in self.ids.num_cnpj.text.lower():  # Aluguel é Pessoa Física
@@ -92,7 +87,7 @@ class Principal(Screen):
                                                                      on_press=lambda x: self.dialog_cad.dismiss()),
                                                         MDRaisedButton(text="SIM", theme_text_color="Custom",
                                                                        on_press=lambda x: self.pega_tela()), ], )
-                    self.dialog_cad.open()
+                self.dialog_cad.open()
         else:
             pass
 
@@ -595,6 +590,23 @@ class Relatorios(Screen):
         super().__init__(**kwargs)
         self.data_venc = None
 
+    def start_foo_thread(self):
+        self.foo_thread = threading.Thread(target=self.relatorios)
+        self.foo_thread.daemon = True
+        self.pb = MDDialog(text="Aguarde...", radius=[20, 7, 20, 7], )
+        self.pb.open()
+        self.foo_thread.start()
+        Clock.schedule_interval(self.check_foo_thread, 10)
+
+    def check_foo_thread(self, dt):
+        if self.foo_thread.is_alive():
+            Clock.schedule_interval(self.check_foo_thread, 10)
+        else:
+            self.pb.dismiss()
+            self.dialog = MDDialog(text="Gerado com sucesso!", radius=[20, 7, 20, 7], md_bg_color='#b3f2ae')
+            self.dialog.open()
+            Clock.unschedule(self.check_foo_thread)
+
     def relatorios(self):
         # Criar planilha para gerar arquivo
         writer = pd.ExcelWriter(os.path.join(self.manager.get_screen('principal').diretorio, 'Relatórios.xlsx'),
@@ -635,21 +647,31 @@ class Relatorios(Screen):
                            'DateValue(?) group by data_vencimento, cnpj, fornecedor',
                            (self.ids.dt_ini.text, self.ids.dt_fim.text))
             resultado = cursor.fetchall()
-            lista2 = [[], [], [], []]
+            lista = [[], [], []]
+            lista_aluguel = [[], [], []]  # Separar lançamentos de aluguel em outra aba
             for i in resultado:
-                for colunas_crf in range(4):
-                    lista2[colunas_crf].append(i[colunas_crf])
-            tabela2 = pd.DataFrame(lista2).transpose()
-            tabela2.columns = ['Data_Vencimento', 'CNPJ', 'Fornecedor', 'CRF']
-            tabela2['CRF'] = tabela2['CRF'].astype(float)
-            tabela2 = tabela2[tabela2['CRF'] != 0]
-            tabela2.loc['Total'] = tabela2.sum(numeric_only=True)
-            tabela2.to_excel(writer, sheet_name='CRF', index=False)
+                print(i[0])
+                if i[0] == 'aluguel':
+                    for colunas_ir in range(3):
+                        lista_aluguel[colunas_ir].append(i[colunas_ir])
+                else:
+                    for colunas_ir in range(3):
+                        lista[colunas_ir].append(i[colunas_ir])
+
+            tabela, tabela_aluguel = pd.DataFrame(lista).transpose(), pd.DataFrame(lista_aluguel).transpose()
+            tabela.columns = tabela_aluguel.columns = ['CNPJ', 'Fornecedor', 'IRRF']
+            tabela['IRRF'], tabela_aluguel['IRRF'] = tabela['IRRF'].astype(float), tabela_aluguel['IRRF'].astype(float)
+            tabela, tabela_aluguel = tabela[tabela['IRRF'] != 0], tabela_aluguel[tabela_aluguel['IRRF'] != 0]
+            tabela.loc['Total'], tabela_aluguel.loc['Total'] = tabela.sum(numeric_only=True), \
+                                                               tabela_aluguel.sum(numeric_only=True)
+            tabela.to_excel(writer, sheet_name='Irrf', index=False)
+            tabela_aluguel.to_excel(writer, sheet_name='Aluguel', index=False)
 
             workbook = writer.book
             worksheet = writer.sheets['CRF']
 
             format1 = workbook.add_format({'num_format': '#,##0.00'})
+            worksheet.set_column('A:A', 20)
             worksheet.set_column('B:B', 20)
             worksheet.set_column('C:C', 50)
             worksheet.set_column('D:D', 15, format1)
@@ -677,8 +699,8 @@ class Relatorios(Screen):
                                'and cidade = ? order by cidade, cnpj', (self.ids.dt_ini.text, self.ids.dt_fim.text, i))
 
                 vencimentos = pd.read_excel(os.path.join(self.manager.get_screen('principal').diretorio,
-                                                         'Programa Planilha de retenção.xlsx'),
-                                            sheet_name='Relatório ISS', usecols=[9, 10], skiprows=10, dtype=str)
+                                                         'Programa Planilha de retenção - exemplo.xlsx'),
+                                            sheet_name='Relatório ISS', dtype=str)
 
                 for index, row in vencimentos.iterrows():
                     if row['MUNICÍPIOS'] == i.upper():
@@ -691,8 +713,6 @@ class Relatorios(Screen):
                 pdf = FPDF(orientation='P', unit='mm', format='A4')
                 pdf.add_page()
                 pdf.set_font('Arial', 'B', 10)
-                pdf.image('logo.png', x=10.0, y=10.0,
-                          h=50.0, w=100.0)
                 pdf.set_xy(10.0, 70.0)
                 pdf.multi_cell(w=125, h=5, txt='ISSQN Município de ' + i)
                 pdf.multi_cell(w=125, h=5, txt='A/C: Contabilidade - Contas a Pagar.')
@@ -736,7 +756,6 @@ class Relatorios(Screen):
                 pdf.line(10, pdf.get_y(), 60, pdf.get_y())
                 pdf.multi_cell(w=100, h=5, txt=dados_responsavel[0])
                 pdf.multi_cell(w=100, h=5, txt=dados_responsavel[1])
-                pdf.multi_cell(w=40, h=5, txt='GECOT')
                 data = self.ids.dt_fim.text[3:].replace('/', '-')
                 nome_arquivo = i + ' ' + data + '.pdf'
                 pdf.output(os.path.join(self.manager.get_screen('principal').diretorio, dir_pdfs, nome_arquivo), 'F')
@@ -770,7 +789,6 @@ class Relatorios(Screen):
             worksheet.set_column('C:C', 15, format1)
             worksheet.set_column('D:D', 15, format1)
 
-            writer.save()
         else:
             pass
 
