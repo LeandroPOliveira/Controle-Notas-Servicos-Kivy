@@ -157,6 +157,8 @@ Screen:
             id: dt_analise
             pos_hint: {'x': .125, 'y': .85}
             hint_text: "Data Análise"
+            validator: 'date'
+            date_format: 'dd/mm/yyyy'
             on_focus:
                 root.data_dia()
 
@@ -164,11 +166,15 @@ Screen:
             id: dt_nota
             pos_hint: {'x': .25, 'y': .85}
             hint_text: "Data Nota"
+            validator: 'date'
+            date_format: 'dd/mm/yyyy'
 
         MDTextField:
             id: dt_venc
             pos_hint: {'x': .375, 'y': .85}
             hint_text: "Data Vencimento"
+            validator: 'date'
+            date_format: 'dd/mm/yyyy'
 
         MDTextField:
             id: num_nota
