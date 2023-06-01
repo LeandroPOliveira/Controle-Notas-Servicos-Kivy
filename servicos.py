@@ -177,7 +177,7 @@ class Principal(Screen):
                 instance.text = str(round((float(calculo[1]) - float(self.ids.exclusao.text.replace(',', '.'))) *
                                           (float(calculo[0]) / 100), 2)).replace('.', ',')
         aliq_ir_pf = ['7,50', '15,00', '22,50', '27,50']  # Para aluguéis PF, aliquotas vigentes do IRRF
-        deducao = ['142,80', '354,80', '636,13', '869,36']  # Parcela a ser deduzida do cálculo
+        deducao = ['158,40', '370,40', '651,73', '884,96']  # Parcela a ser deduzida do cálculo
         if aliquota.text in aliq_ir_pf:
             calculo = (aliquota.text.replace(',', '.'), self.ids.v_bruto.text.replace(',', '.'))
             instance.text = str(round(float(calculo[1]) * (float(calculo[0]) / 100) -
