@@ -141,11 +141,15 @@ class Principal(Screen):
                 cursor.execute('select aliq_iss from municipios where municipio = ? and cod_iss = ?',
                                (self.ids.mun_iss.text.capitalize(), self.ids.cod_serv.text,))
                 busca_aliq = cursor.fetchone()
-                print(busca_aliq)
+
                 self.ids.aliq_iss.text = str(round(busca_aliq[0], 2)).replace('.', ',')
                 cnx.close()
             except TypeError:
                 pass
+
+        else:
+            self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text\
+                = '0,00', '0,00', '0,00', '0,00'
 
         try:
             self.descr_serv = busca['descricao'][0:190]
@@ -361,8 +365,6 @@ class Principal(Screen):
                     else:
                         entrada.text = str(round(float(BancoDados.lista[0][index]), 2)).replace('.', ',')
             BancoDados.lista.pop(0)
-
-        print(BancoDados.lista)
 
     def lembrar_lancamento(self):  # Lembrar informações do último lançamento para notas de mesmo prestador
         if self.ids.lembrar.active:
@@ -665,7 +667,7 @@ class Relatorios(Screen):
             lista = [[], [], []]
             lista_aluguel = [[], [], []]  # Separar lançamentos de aluguel em outra aba
             for i in resultado:
-                print(i[0])
+
                 if i[0] == 'aluguel':
                     for colunas_ir in range(3):
                         lista_aluguel[colunas_ir].append(i[colunas_ir])
