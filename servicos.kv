@@ -70,7 +70,10 @@
     line_color: '#fca311'
     md_bg_color: '#fca311'
 
-
+<Check@MDCheckbox>:
+    group: 'group'
+    size_hint: None, None
+    size: dp(48), dp(48)
 
 Screen:
     name: 'tela1'
@@ -152,6 +155,12 @@ Screen:
             text: ''
             id: cod_id
             font_color: (0,0,0,0)
+
+        Check: # Marcar para desativar o preenchimento automático de data
+            id: check_data
+            ripple_scale: 0
+            pos_hint: {'x': 0.099, 'y': 0.85}
+            group: False
 
         MDTextField:
             id: dt_analise

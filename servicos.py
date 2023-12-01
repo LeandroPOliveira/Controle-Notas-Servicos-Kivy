@@ -45,19 +45,13 @@ class Principal(Screen):
                              + os.path.join(self.diretorio, self.base_dados)
         self.incorretos = []
 
-    def caixa_dialogo(self, mensagem):
-        if not self.dialog:
-            self.dialog = MDDialog(text=mensagem, radius=[20, 7, 20, 7], )
-        self.dialog.open()
-
-    #
-    # def mascara(self):  # Formatar CNPJ com pontos e barra
-    #     mask = self.ids.num_cnpj.text
-    #     if mask != '' and '/' not in mask and len(mask) >= 14:
-    #         mask_cnpj = f'{mask[:2]}.{mask[2:5]}.{mask[5:8]}/{mask[8:12]}-{mask[12:14]}'
-    #         self.ids.num_cnpj.text = mask_cnpj
-    #     else:
-    #         pass
+    def mascara(self):  # Formatar CNPJ com pontos e barra
+        mask = self.ids.num_cnpj.text
+        if mask != '' and '/' not in mask and len(mask) >= 14:
+            mask_cnpj = f'{mask[:2]}.{mask[2:5]}.{mask[5:8]}/{mask[8:12]}-{mask[12:14]}'
+            self.ids.num_cnpj.text = mask_cnpj
+        else:
+            pass
 
     def valida_data(self):
         datas = [self.ids.dt_analise, self.ids.dt_nota, self.ids.dt_venc]
@@ -207,7 +201,7 @@ class Principal(Screen):
             pass
 
     def data_dia(self):  # Trazer atual para o campo data da análise
-        if self.ids.dt_nota.text == '':
+        if self.ids.check_data.active is True:
             self.ids.dt_analise.text = date.today().strftime('%d/%m/%Y')
         else:
             pass
@@ -215,7 +209,10 @@ class Principal(Screen):
     def adicionar(self):  # Adicionar nota fiscal lançada
         if self.ids.num_cnpj.text == '':
             self.dialog_obs = MDDialog(text="Insira todas as informações!", radius=[20, 7, 20, 7], )
+            self.dialog_obs.open()
 
+        if self.ids.cod_id.text != "":
+            self.dialog_obs = MDDialog(text="Nota já cadastrada! Somente atualize ou apague.", radius=[20, 7, 20, 7], )
             self.dialog_obs.open()
 
         else:
