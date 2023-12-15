@@ -142,14 +142,11 @@ class Principal(Screen):
                 pass
 
         else:
-            self.ids.aliq_ir.text, self.ids.aliq_crf.text, self.ids.aliq_inss.text, self.ids.aliq_iss.text\
-                = '0,00', '0,00', '0,00', '0,00'
+            self.ids.aliq_ir.text = self.ids.aliq_crf.text = self.ids.aliq_inss.text = self.ids.aliq_iss.text = '0,00'
 
         try:
             self.descr_serv = busca['descricao'][0:190]
-        except KeyError:
-            pass
-        except TypeError:
+        except (KeyError, TypeError):
             pass
 
     def aliq_desoneracao(self):  # Empresa com desoneração a aliquota de INSS é 3,5%
@@ -246,6 +243,7 @@ class Principal(Screen):
             self.limpar()
             cnx.commit()
             cnx.close()
+            self.ids.aliq_ir.text = self.ids.aliq_crf.text = self.ids.aliq_inss.text = self.ids.aliq_iss.text = '0,00'
 
             self.dialog_add = MDDialog(text="Registro incluido com sucesso!", radius=[20, 7, 20, 7], )
             self.dialog_add.open()
