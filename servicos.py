@@ -249,7 +249,7 @@ class Principal(Screen):
             self.dialog_add.open()
 
     def limpar(self):  # Limpar os campos
-        entradas = [self.ids.dt_analise, self.ids.dt_nota,
+        entradas = [self.ids.cod_id, self.ids.dt_analise, self.ids.dt_nota,
                     self.ids.dt_venc,
                     self.ids.num_nota,
                     self.ids.num_cnpj,
