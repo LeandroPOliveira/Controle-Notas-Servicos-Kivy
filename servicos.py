@@ -53,6 +53,20 @@ class Principal(Screen):
         else:
             pass
 
+    def nota_repetida(self):
+        cnx = pyodbc.connect(self.path_database)
+        cursor = cnx.cursor()
+        cursor.execute('SELECT * FROM notas_fiscais WHERE NF = ? and CNPJ = ? and data = ?', (self.ids.num_nota.text,
+                                                                                              self.ids.num_cnpj.text,
+                                                                                              self.ids.dt_nota.text))
+
+        if len(cursor.fetchall()) != 0:
+            self.dialog_repete = MDDialog(text=f'Nota fiscal já cadastrada!',
+                                        radius=[20, 7, 20, 7], )
+            self.dialog_repete.open()
+
+        cnx.close()
+
     def valida_data(self):
         datas = [self.ids.dt_analise, self.ids.dt_nota, self.ids.dt_venc]
         for dt in datas:
